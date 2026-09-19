@@ -6,7 +6,16 @@
   <title>Service Provider — BPOS Management</title>
   <link rel="stylesheet" href="../../assets/css/style.css">
   <style>
-    .online-indicator{position:fixed;top:10px;right:10px;padding:6px 12px;border-radius:20px;font-weight:bold;font-size:0.85rem;z-index:999;}
+    .sp-container{max-width:1200px;margin:0 auto;padding:20px;}
+    .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;}
+    .tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:15px;}
+    .tab-btn{padding:8px 14px;border:none;border-radius:6px;background:#e9ecef;cursor:pointer;}
+    .tab-btn.active{background:#6f42c1;color:#fff;}
+    .form-card{border:1px solid #ddd;border-radius:8px;padding:16px;margin:10px 0;}
+    .btn-secondary{padding:10px 16px;border:none;border-radius:6px;cursor:pointer;}
+    .btn-logout{padding:10px 20px;background:#dc3545;color:#fff;border:none;border-radius:6px;cursor:pointer;}
+
+    .online-indicator{position:fixed;top:10px;right:10px;padding:6px 12px;border-radius:20px;font-weight:bold;font-size:0.85rem;z-index:999;box-shadow:0 2px 6px rgba(0,0,0,0.1);}
     .online-indicator.online{background:#d4edda;color:#155724;}
     .online-indicator.offline{background:#f8d7da;color:#721c24;}
     .tab-content{display:none;}
@@ -20,7 +29,7 @@
     .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;}
     .modal-box{background:#fff;padding:20px;border-radius:10px;max-width:550px;width:90%;max-height:90vh;overflow-y:auto;}
     .hidden{display:none !important;}
-    .badge{display:inline-block;padding:3px 8px;border-radius:12px;font-size:0.75rem;font-weight:bold;}
+    .badge{display:inline-block;padding:3px 8px;border-radius:12px;font-size:0.75rem;font-weight:bold;margin-left:4px;}
     .badge.active{background:#d4edda;color:#155724;}
     .badge.expired{background:#f8d7da;color:#721c24;}
     .badge.pending{background:#fff3cd;color:#856404;}
@@ -86,7 +95,6 @@
     <!-- ========== SUBSCRIPTION MANAGEMENT ========== -->
     <div id="subscription" class="tab-content">
       <h3>Manage Subscriptions</h3>
-      
       <div class="form-card">
         <h4>Create / Extend Subscription</h4>
         <input type="text" id="sub-admin-email" placeholder="Admin Username / Account ID" class="form-input" required>
@@ -96,7 +104,7 @@
         </label>
         <button id="create-sub-btn" class="btn-primary">Create / Extend</button>
         <p style="font-size:0.85rem;color:#666;margin-top:8px;">
-          Standard Rates: <br>
+          Standard Rates:<br>
           💵 199 — Weekly (7 days)<br>
           💵 325 — Bi-Weekly (14 days)<br>
           💵 579 — Monthly (30 days)
@@ -110,7 +118,6 @@
     <div id="admin-access" class="tab-content">
       <h3>Admin Account Management</h3>
       <p class="system-note">🔒 Only Service Provider can change Admin master password and grant access.</p>
-      
       <div class="form-card">
         <h4>Register New Admin Account</h4>
         <input type="text" id="new-admin-user" placeholder="Admin Username" class="form-input" required>
@@ -138,7 +145,6 @@
     <div id="sp-messages" class="tab-content">
       <h3>Send System / Broadcast Messages</h3>
       <p>Messages will appear as popup notification to selected store or all users.</p>
-      
       <select id="msg-target-store" class="form-input">
         <option value="">— All Stores / All Users —</option>
       </select>
@@ -152,7 +158,6 @@
     <div id="chat" class="tab-content">
       <h3>Direct Private Chat</h3>
       <p class="system-note">🔒 Chat with Admin is visible only to you and that Admin. Chat history is isolated per pair.</p>
-      
       <select id="chat-partner" class="form-input">
         <option value="">— Select Admin to Chat —</option>
       </select>
@@ -222,14 +227,14 @@ function checkSystemSubscriptions() {
   const subs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
   const alertBox = document.getElementById('sub-alert');
   const textSpan = document.getElementById('sub-status-text');
-  
+
   if (subs.length === 0) {
     alertBox.classList.remove('hidden');
     alertBox.classList.remove('expired');
     textSpan.textContent = 'No subscriptions created yet. Free trial activates when first Admin account is created.';
     return;
   }
-  
+
   const active = subs.filter(s => new Date(s.expiryAt) > new Date() || s.forceActive);
   const expiring = subs.filter(s => {
     const expiry = new Date(s.expiryAt);
@@ -240,7 +245,7 @@ function checkSystemSubscriptions() {
     const expiry = new Date(s.expiryAt);
     return new Date() > expiry && !s.forceActive;
   });
-  
+
   alertBox.classList.remove('hidden');
   if (expired.length > 0) {
     alertBox.classList.add('expired');
@@ -259,18 +264,18 @@ function performLogout() {
   document.querySelectorAll('input[type="password"]').forEach(el => el.value = '');
   logout();
 }
-document.getElementById('logout-btn').onclick = () => {
+document.getElementById('logout-btn').addEventListener('click', () => {
   if (confirm('Log out?')) performLogout();
-};
+});
 
 // ========== TABS ==========
 document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.onclick = () => {
+  btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
-    
+
     switch(btn.dataset.tab) {
       case 'overview': loadOverview(); break;
       case 'subscription': loadSubsList(); break;
@@ -279,7 +284,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
       case 'chat': populateChatAdmins(); break;
       case 'system-logs': loadSystemLogs(); break;
     }
-  };
+  });
 });
 
 // ========== OVERVIEW ==========
@@ -287,36 +292,35 @@ function loadOverview() {
   const admins = JSON.parse(localStorage.getItem('adminAccounts') || '[]');
   const subs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
   const cashiers = JSON.parse(localStorage.getItem('cashiers') || '[]');
-  
+
   const activeSubs = subs.filter(s => new Date(s.expiryAt) > new Date() || s.forceActive);
   const expiring = subs.filter(s => {
     const expiry = new Date(s.expiryAt);
     const daysLeft = (expiry - new Date()) / (1000*60*60*24);
     return daysLeft > 0 && daysLeft <= 7;
   });
-  
+
   document.getElementById('stat-admins').textContent = admins.length;
   document.getElementById('stat-active-subs').textContent = activeSubs.length;
   document.getElementById('stat-expiring').textContent = expiring.length;
   document.getElementById('stat-cashiers').textContent = cashiers.length;
-  
+
   const logs = JSON.parse(localStorage.getItem('systemActivityLog') || '[]').slice(-15).reverse();
   document.getElementById('recent-activity').innerHTML = logs.length === 0
     ? '<p>No recent activity.</p>'
     : logs.map(l => `
         <div class="item-card" style="padding:8px;">
-          <small>${new Date(l.timestamp).toLocaleString()}</small> — 
-          <strong>${l.action}</strong> ${l.details ? `: ${l.details}` : ''}
+          <small>${new Date(l.timestamp).toLocaleString()}</small> —
+          <strong>${l.action}</strong>${l.details ? `: ${l.details}` : ''}
         </div>
       `).join('');
-  
+
   checkSystemSubscriptions();
 }
 
 // ========== SUBSCRIPTION MANAGEMENT ==========
 function loadSubsList() {
   const subs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
-  
   document.getElementById('subs-list').innerHTML = subs.length === 0
     ? '<p>No subscriptions created.</p>'
     : subs.map(s => {
@@ -324,7 +328,7 @@ function loadSubsList() {
         const daysLeft = Math.ceil((new Date(s.expiryAt) - new Date()) / (1000*60*60*24));
         return `
           <div class="item-card">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
               <div>
                 <strong>${s.adminUsername || s.adminId}</strong>
                 <span class="badge ${isActive ? 'active' : 'expired'}">${isActive ? 'Active' : 'Expired'}</span>
@@ -337,10 +341,9 @@ function loadSubsList() {
           </div>
         `;
       }).join('');
-  
-  // Extend button handler
+
   document.querySelectorAll('.extend-btn').forEach(btn => {
-    btn.onclick = () => {
+    btn.addEventListener('click', () => {
       const subs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
       const idx = subs.findIndex(s => s.id === btn.dataset.sid);
       if (idx === -1) return;
@@ -349,23 +352,23 @@ function loadSubsList() {
       logAction('Subscription Extended', `Admin: ${subs[idx].adminUsername}, New Expiry: ${subs[idx].expiryAt}`);
       alert('Extended by 30 days ✅');
       loadSubsList();
-    };
+    });
   });
 }
 
-document.getElementById('create-sub-btn').onclick = () => {
+document.getElementById('create-sub-btn').addEventListener('click', () => {
   const adminId = document.getElementById('sub-admin-email').value.trim();
   const days = parseInt(document.getElementById('sub-duration').value);
   const forceActive = document.getElementById('sub-force-active').checked;
-  
+
   if (!adminId || !days || days < 1) return alert('Fill valid fields.');
-  
+
   const expiry = new Date();
   expiry.setDate(expiry.getDate() + days);
-  
+
   const subs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
   const existingIdx = subs.findIndex(s => s.adminId === adminId || s.adminUsername === adminId);
-  
+
   const subRec = {
     id: `sub-${Date.now()}`,
     adminId,
@@ -375,26 +378,25 @@ document.getElementById('create-sub-btn').onclick = () => {
     createdAt: new Date().toISOString(),
     createdBy: 'SP'
   };
-  
+
   if (existingIdx >= 0) subs[existingIdx] = subRec;
   else subs.push(subRec);
-  
+
   localStorage.setItem('subscriptions', JSON.stringify(subs));
   logAction('Subscription Created/Extended', `Admin: ${adminId}, ${days} days, Expiry: ${expiry.toLocaleDateString()}`);
-  
+
   alert('Subscription saved ✅');
   document.getElementById('sub-admin-email').value = '';
   document.getElementById('sub-duration').value = '';
   loadSubsList();
-};
+});
 
 // ========== ADMIN ACCOUNTS ==========
 function loadAdminsList() {
   const admins = JSON.parse(localStorage.getItem('adminAccounts') || '[]');
-  
   document.getElementById('admin-to-change').innerHTML = '<option value="">— Select Admin —</option>' +
     admins.map(a => `<option value="${a.id}">${a.username}</option>`).join('');
-  
+
   document.getElementById('admins-list').innerHTML = admins.length === 0
     ? '<p>No admin accounts registered.</p>'
     : admins.map(a => `
@@ -405,18 +407,18 @@ function loadAdminsList() {
       `).join('');
 }
 
-document.getElementById('add-admin-btn').onclick = () => {
+document.getElementById('add-admin-btn').addEventListener('click', () => {
   const user = document.getElementById('new-admin-user').value.trim();
   const pass = document.getElementById('new-admin-pass').value.trim();
-  
+
   if (!user || !pass) return alert('Fill username and password.');
-  
+
   const admins = JSON.parse(localStorage.getItem('adminAccounts') || '[]');
   if (admins.find(a => a.username === user)) return alert('Username exists.');
-  
+
   const now = new Date();
   const trialExpiry = new Date(now.getTime() + 7 * 86400000);
-  
+
   admins.push({
     id: `admin-${Date.now()}`,
     username: user,
@@ -424,8 +426,7 @@ document.getElementById('add-admin-btn').onclick = () => {
     createdAt: now.toISOString()
   });
   localStorage.setItem('adminAccounts', JSON.stringify(admins));
-  
-  // Auto-create 7-day free trial subscription
+
   const subs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
   subs.push({
     id: `sub-${Date.now()}`,
@@ -437,50 +438,47 @@ document.getElementById('add-admin-btn').onclick = () => {
     createdBy: 'System (Free Trial)'
   });
   localStorage.setItem('subscriptions', JSON.stringify(subs));
-  
+
   logAction('Admin Account Created', `Username: ${user} — 7-Day Free Trial. Expires: ${trialExpiry.toLocaleDateString()}`);
-  
   alert(`✅ Admin account created!\n7-Day Free Trial Activated.\nExpires: ${trialExpiry.toLocaleDateString()}`);
   document.getElementById('new-admin-user').value = '';
   document.getElementById('new-admin-pass').value = '';
   loadAdminsList();
   loadOverview();
-};
+});
 
-document.getElementById('change-admin-pass-btn').onclick = () => {
+document.getElementById('change-admin-pass-btn').addEventListener('click', () => {
   const adminId = document.getElementById('admin-to-change').value;
   const newPass = document.getElementById('new-admin-pass-set').value.trim();
-  
+
   if (!adminId || !newPass) return alert('Select admin and enter new password.');
-  
+
   const admins = JSON.parse(localStorage.getItem('adminAccounts') || '[]');
   const idx = admins.findIndex(a => a.id === adminId);
   if (idx === -1) return alert('Admin not found.');
-  
+
   admins[idx].password = newPass;
   localStorage.setItem('adminAccounts', JSON.stringify(admins));
-  
+
   logAction('Admin Password Changed', `Username: ${admins[idx].username} — updated by SP`);
-  
   alert('Password updated ✅');
   document.getElementById('new-admin-pass-set').value = '';
   loadAdminsList();
-};
+});
 
-// Full Reset
-document.getElementById('reset-all-btn').onclick = () => {
+document.getElementById('reset-all-btn').addEventListener('click', () => {
   document.getElementById('confirm-reset-modal').classList.remove('hidden');
-};
-document.getElementById('cancel-reset-btn').onclick = () => {
+});
+document.getElementById('cancel-reset-btn').addEventListener('click', () => {
   document.getElementById('confirm-reset-modal').classList.add('hidden');
   document.getElementById('reset-confirm-text').value = '';
-};
-document.getElementById('confirm-reset-btn').onclick = () => {
+});
+document.getElementById('confirm-reset-btn').addEventListener('click', () => {
   if (document.getElementById('reset-confirm-text').value !== 'RESET') {
     return alert('Type RESET exactly to confirm.');
   }
   if (!confirm('FINAL CONFIRM — Delete ALL data? Cannot be undone!')) return;
-  
+
   localStorage.clear();
   logAction('SYSTEM FULL RESET', 'All data cleared by Service Provider');
   alert('System cleared ✅ Refresh page.');
@@ -488,7 +486,7 @@ document.getElementById('confirm-reset-btn').onclick = () => {
   document.getElementById('reset-confirm-text').value = '';
   loadOverview();
   loadAdminsList();
-};
+});
 
 // ========== BROADCAST MESSAGES ==========
 function populateMsgStores() {
@@ -498,12 +496,12 @@ function populateMsgStores() {
     stores.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
 }
 
-document.getElementById('send-sp-msg').onclick = () => {
+document.getElementById('send-sp-msg').addEventListener('click', () => {
   const text = document.getElementById('sp-msg-textarea').value.trim();
   const targetStore = document.getElementById('msg-target-store').value || null;
-  
+
   if (!text) return alert('Enter message.');
-  
+
   const msgs = JSON.parse(localStorage.getItem('spMessages') || '[]');
   msgs.push({
     id: `spmsg-${Date.now()}`,
@@ -513,13 +511,12 @@ document.getElementById('send-sp-msg').onclick = () => {
     sentBy: 'SP'
   });
   localStorage.setItem('spMessages', JSON.stringify(msgs));
-  
+
   logAction('SP Broadcast Sent', targetStore ? `Store: ${targetStore}` : 'Sent to ALL');
-  
   alert('Message sent ✅ Will appear as popup.');
   document.getElementById('sp-msg-textarea').value = '';
   loadMsgLog();
-};
+});
 
 function loadMsgLog() {
   const msgs = JSON.parse(localStorage.getItem('spMessages') || '[]').reverse();
@@ -529,7 +526,7 @@ function loadMsgLog() {
         <div class="item-card">
           <p>${m.text}</p>
           <small>
-            ${new Date(m.sentAt).toLocaleString()} — 
+            ${new Date(m.sentAt).toLocaleString()} —
             ${m.targetStore ? 'Specific Store' : 'All Users'}
           </small>
         </div>
@@ -547,28 +544,28 @@ function populateChatAdmins() {
     admins.map(a => `<option value="${a.id}">${a.username}</option>`).join('');
 }
 
-document.getElementById('chat-partner').onchange = e => {
+document.getElementById('chat-partner').addEventListener('change', e => {
   CHAT_PARTNER = e.target.value || null;
-  
+
   if (chatRefreshInterval) {
     clearInterval(chatRefreshInterval);
     chatRefreshInterval = null;
   }
-  
+
   document.getElementById('chat-box').style.display = CHAT_PARTNER ? 'block' : 'none';
   document.getElementById('chat-input-area').style.display = CHAT_PARTNER ? 'flex' : 'none';
-  
+
   if (CHAT_PARTNER) {
     loadChatMessages();
     chatRefreshInterval = setInterval(loadChatMessages, 3000);
   }
-};
+});
 
 function loadChatMessages() {
   if (!CHAT_PARTNER) return;
   const convKey = `chat_sp_admin_${CHAT_PARTNER}`;
   const messages = JSON.parse(localStorage.getItem(convKey) || '[]');
-  
+
   const box = document.getElementById('chat-box');
   box.innerHTML = messages.length === 0
     ? '<p style="color:#888;">No messages yet.</p>'
@@ -581,36 +578,33 @@ function loadChatMessages() {
   box.scrollTop = box.scrollHeight;
 }
 
-document.getElementById('send-chat').onclick = () => {
+document.getElementById('send-chat').addEventListener('click', () => {
   if (!CHAT_PARTNER) return;
   const text = document.getElementById('chat-text').value.trim();
   if (!text) return;
-  
+
   const convKey = `chat_sp_admin_${CHAT_PARTNER}`;
   const adminChatKey = `chat_admin_sp`;
-  
+
   const msg = {
     senderId: 'sp',
     senderName: 'Service Provider',
     text,
     time: new Date().toISOString()
   };
-  
-  // Save to SP's view
+
   let msgs = JSON.parse(localStorage.getItem(convKey) || '[]');
   msgs.push(msg);
   localStorage.setItem(convKey, JSON.stringify(msgs));
-  
-  // Save to Admin's view
+
   let adminMsgs = JSON.parse(localStorage.getItem(adminChatKey) || '[]');
   adminMsgs.push(msg);
   localStorage.setItem(adminChatKey, JSON.stringify(adminMsgs));
-  
+
   logAction('SP Chat Message Sent', `To Admin ID: ${CHAT_PARTNER}`);
-  
   document.getElementById('chat-text').value = '';
   loadChatMessages();
-};
+});
 
 // ========== SYSTEM LOGS ==========
 function loadSystemLogs() {
