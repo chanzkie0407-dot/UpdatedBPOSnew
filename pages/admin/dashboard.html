@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin / Owner — BPOS</title>
-  <link rel="stylesheet" href="../../assets/css/style.css">
+  <link rel="stylesheet" href="../assets/css/style.css">
   <style>
     .online-indicator{position:fixed;top:10px;right:10px;padding:6px 12px;border-radius:20px;font-weight:bold;font-size:0.85rem;z-index:999;}
     .online-indicator.online{background:#d4edda;color:#155724;}
@@ -66,7 +66,6 @@ async function fsSet(collection, docId, data) {
     return false;
   }
 }
-
 async function fsGet(collection, docId) {
   try {
     const snap = await db.collection(collection).doc(docId).get();
@@ -76,7 +75,6 @@ async function fsGet(collection, docId) {
     return cached ? JSON.parse(cached) : null;
   }
 }
-
 function fsWatch(collection, callback) {
   return db.collection(collection).onSnapshot(
     () => callback(),
@@ -84,7 +82,7 @@ function fsWatch(collection, callback) {
   );
 }
 
-// ===== MIGRATION — Kasama na ang lahat ng collection =====
+// ===== MIGRATION =====
 async function migrateLocalToFirebase() {
   const keys = [
     'stores', 'cashiers', 'products', 'transactions', 'requests', 
@@ -112,12 +110,10 @@ async function migrateLocalToFirebase() {
       </div>
       <button id="logout-btn" class="btn-logout">Log Out</button>
     </div>
-
     <div id="sub-alert" class="subscription-alert hidden">
       <strong>⚠️ Subscription Notice:</strong>
       <span id="sub-status-text"></span>
     </div>
-
     <div class="tabs">
       <button class="tab-btn active" data-tab="stores">Stores</button>
       <button class="tab-btn" data-tab="cashiers">Cashiers</button>
@@ -273,12 +269,13 @@ async function migrateLocalToFirebase() {
   </div>
 
 <script type="module">
-import { requireAuth } from '../../auth/protect.js';
-import { logout } from '../../auth/login.js';
+// ✅ INAYOS NA ANG PATHS — mula pages/ → ../auth/
+import { requireAuth } from '../auth/protect.js';
+import { logout } from '../auth/login.js';
 
 // ===== ROLE CHECK =====
 const user = requireAuth(['admin']);
-if (!user) window.location.href = '../../auth/login.html';
+if (!user) window.location.href = '../auth/login.html';
 const CURRENT_USER = user;
 
 // ===== ONLINE STATUS =====
@@ -292,7 +289,7 @@ window.addEventListener('online', updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
 updateOnlineStatus();
 
-// ===== SUBSCRIPTION CHECK — aligned with SP panel =====
+// ===== SUBSCRIPTION CHECK =====
 async function checkSubscription() {
   const allSubs = await fsGet('data', 'subscriptions');
   const subs = allSubs?.value || [];
@@ -306,7 +303,6 @@ async function checkSubscription() {
     return;
   }
   
-  // Find subscription linked to this admin
   const mySub = subs.find(s => 
     s.adminId === CURRENT_USER.id || 
     s.adminUsername === CURRENT_USER.name
@@ -376,7 +372,6 @@ async function renderStores() {
   document.getElementById('report-store').innerHTML = opts;
   document.getElementById('count-req-store').innerHTML = opts;
 }
-
 document.getElementById('add-store-btn').onclick = async () => {
   const name = document.getElementById('store-name').value.trim();
   if (!name) return alert('Enter store name.');
@@ -431,7 +426,6 @@ async function renderCashiers() {
     '<option value="">— Select Cashier —</option>' +
     cashiers.map(c => `<option value="${c.id}">${c.fname} ${c.lname || ''}</option>`).join('');
 }
-
 document.getElementById('add-cashier-btn').onclick = async () => {
   const fname = document.getElementById('cashier-fname').value.trim();
   const lname = document.getElementById('cashier-lname').value.trim();
@@ -460,7 +454,6 @@ document.getElementById('add-cashier-btn').onclick = async () => {
   document.getElementById('cashier-pwd').value = '';
   await renderCashiers();
 };
-
 document.getElementById('update-pwd-btn').onclick = async () => {
   const id = document.getElementById('cashier-to-update').value;
   const newPwd = document.getElementById('new-cashier-pwd').value.trim();
@@ -498,7 +491,6 @@ async function renderProducts(filterStore = null) {
         </div>
       `).join('');
 }
-
 document.getElementById('add-prod-btn').onclick = async () => {
   const storeId = document.getElementById('prod-store').value;
   const name = document.getElementById('prod-name').value.trim();
@@ -529,7 +521,6 @@ document.getElementById('add-prod-btn').onclick = async () => {
   document.getElementById('prod-barcode').value = '';
   await renderProducts();
 };
-
 document.getElementById('prod-filter-store').onchange = async e => {
   await renderProducts(e.target.value || null);
 };
@@ -650,7 +641,7 @@ document.getElementById('gen-report-btn').onclick = async () => {
   `;
 };
 
-// ===== REQUESTS — WITH VOID STOCK RESTORE =====
+// ===== REQUESTS =====
 async function loadRequests() {
   const rData = await fsGet('data', 'requests');
   const reqs = rData?.value || [];
@@ -715,12 +706,10 @@ async function loadRequests() {
         reqs[idx].reviewedBy = CURRENT_USER.id;
         if (remarks) reqs[idx].remarks = remarks;
         
-        // === APPROVE ACTIONS ===
         if (newStatus === 'approved') {
           const pData = await fsGet('data', 'products');
           const prods = pData?.value || [];
           
-          // Stock Out → deduct stock
           if (reqs[idx].type === 'stockout') {
             const pIdx = prods.findIndex(p => p.id === reqs[idx].productId && p.storeId === reqs[idx].storeId);
             if (pIdx >= 0) {
@@ -728,7 +717,6 @@ async function loadRequests() {
             }
           }
           
-          // Void → RESTORE stock
           if (reqs[idx].type === 'void') {
             const voidTx = txs.find(t => t.id === reqs[idx].voidTxId);
             if (voidTx) {
@@ -778,9 +766,7 @@ async function loadCountChecklist() {
     document.querySelectorAll('.prod-check').forEach(cb => cb.checked = e.target.checked);
   };
 }
-
 document.getElementById('count-req-store').onchange = loadCountChecklist;
-
 document.getElementById('send-count-req-btn').onclick = async () => {
   const storeId = document.getElementById('count-req-store').value;
   if (!storeId) return alert('Select store.');
@@ -803,7 +789,6 @@ document.getElementById('send-count-req-btn').onclick = async () => {
   alert('Count request sent to cashier ✅');
   await loadCountResults();
 };
-
 async function loadCountResults() {
   const cData = await fsGet('data', 'countRequests');
   const counts = cData?.value || [];
@@ -839,10 +824,9 @@ async function loadCountResults() {
       }).join('');
 }
 
-// ===== CHAT — FULLY SYNCED =====
+// ===== CHAT =====
 let CHAT_TARGET = null;
 let chatRefreshInterval = null;
-
 document.getElementById('chat-partner').onchange = e => {
   const val = e.target.value;
   document.getElementById('chat-cashier-select').classList.toggle('hidden', val !== 'cashier');
@@ -861,7 +845,6 @@ document.getElementById('chat-partner').onchange = e => {
     chatRefreshInterval = setInterval(loadChatMessages, 3000);
   }
 };
-
 document.getElementById('chat-cashier-select').onchange = e => {
   const id = e.target.value;
   if (!id) return;
@@ -871,11 +854,9 @@ document.getElementById('chat-cashier-select').onchange = e => {
   if (chatRefreshInterval) clearInterval(chatRefreshInterval);
   chatRefreshInterval = setInterval(loadChatMessages, 3000);
 };
-
 async function loadChatMessages() {
   if (!CHAT_TARGET) return;
   
-  // Aligned keys — same as Cashier & SP
   const convKey = CHAT_TARGET.type === 'sp' ? 'chat_admin_sp' : `chat_admin_cashier_${CHAT_TARGET.id}`;
   const mData = await fsGet('chat', convKey);
   const msgs = mData?.value || [];
@@ -892,7 +873,6 @@ async function loadChatMessages() {
       `).join('');
   document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
 }
-
 document.getElementById('send-chat-btn').onclick = async () => {
   if (!CHAT_TARGET) return alert('Select recipient first.');
   const text = document.getElementById('chat-text').value.trim();
@@ -927,13 +907,12 @@ document.getElementById('logout-btn').onclick = () => {
   if (confirm('Log out? All password fields will be cleared.')) {
     if (chatRefreshInterval) clearInterval(chatRefreshInterval);
     document.querySelectorAll('input[type="password"]').forEach(el => el.value = '');
-    logout();
+    logout('../auth/login.html');
   }
 };
 
 // ===== ONLOAD & SYNC =====
 window.addEventListener('load', async () => {
-  // Manual migration button
   document.getElementById('trigger-migrate-btn').onclick = async () => {
     if (confirm('Upload all local data to Cloud? Do this only on your main device!')) {
       await migrateLocalToFirebase();
@@ -941,7 +920,6 @@ window.addEventListener('load', async () => {
     }
   };
   
-  // Auto-migrate once
   if (!sessionStorage.getItem('migrated')) {
     if (confirm('I-upload ba ang lahat ng data sa Cloud? Gawin lang sa pangunahing device!')) {
       await migrateLocalToFirebase();
@@ -949,7 +927,6 @@ window.addEventListener('load', async () => {
     }
   }
   
-  // Real-time sync across all tabs
   fsWatch('data', async () => {
     await renderStores();
     await renderCashiers();
@@ -962,14 +939,10 @@ window.addEventListener('load', async () => {
   await renderStores();
   await renderCashiers();
   await renderProducts();
-  await renderStores();
-  await renderCashiers();
-  await renderProducts();
   await loadRequests();
   await loadCountResults();
   await checkSubscription();
   
-  // Display user info
   document.getElementById('user-info').textContent = `${CURRENT_USER.name || 'Admin'} — Admin / Owner`;
 });
 </script>
