@@ -10,35 +10,183 @@
   <div class="admin-container">
     <div class="header">
       <h1>Admin Dashboard</h1>
-      <button id="logout-btn" class="btn-logout">Log Out</button>
+      <div>
+        <span id="admin-name"></span>
+        <button id="logout-btn" class="btn-logout">Log Out</button>
+      </div>
     </div>
 
     <div class="tabs">
       <button class="tab-btn active" data-tab="cashiers">Cashier Accounts</button>
       <button class="tab-btn" data-tab="stores">Stores</button>
+      <button class="tab-btn" data-tab="products">Products</button>
+      <button class="tab-btn" data-tab="sales">Sales Overview</button>
+      <button class="tab-btn" data-tab="stocks">Stocks</button>
+      <button class="tab-btn" data-tab="voids">Void Requests</button>
+      <button class="tab-btn" data-tab="count">Stock Count</button>
+      <button class="tab-btn" data-tab="chat">Chat</button>
     </div>
 
+    <!-- CASHIERS TAB -->
     <div id="cashiers" class="tab-content active">
       <h2>Add Cashier</h2>
       <form id="cashier-form" class="form-card">
-        <div class="form-row"><label>Full Name:</label><input type="text" id="cname" required></div>
-        <div class="form-row"><label>Store ID:</label><input type="text" id="cstore" required placeholder="e.g. DVO01"></div>
-        <div class="form-row"><label>Password:</label><input type="text" id="cpass" required placeholder="e.g. 1234"></div>
+        <div class="form-row">
+          <label>First Name *:</label>
+          <input type="text" id="cfname" required>
+        </div>
+        <div class="form-row">
+          <label>Last Name (Optional):</label>
+          <input type="text" id="clname">
+        </div>
+        <div class="form-row">
+          <label>Assign Store *:</label>
+          <select id="cstore" required>
+            <option value="">-- Select Store --</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Password (4 digits) *:</label>
+          <input type="password" id="cpass" required maxlength="4" pattern="[0-9]{4}" title="4 numbers only">
+        </div>
         <button type="submit" class="btn-primary">Add Cashier</button>
       </form>
       <h3>Cashier List</h3>
       <div id="cashier-list"></div>
     </div>
 
+    <!-- STORES TAB -->
     <div id="stores" class="tab-content">
       <h2>Add Store</h2>
       <form id="store-form" class="form-card">
-        <div class="form-row"><label>Store ID:</label><input type="text" id="sid" required></div>
-        <div class="form-row"><label>Store Name:</label><input type="text" id="sname" required></div>
+        <div class="form-row">
+          <label>Store Code (Optional):</label>
+          <input type="text" id="scode" placeholder="Auto-generate if empty">
+        </div>
+        <div class="form-row">
+          <label>Store Name *:</label>
+          <input type="text" id="sname" required>
+        </div>
+        <div class="form-row">
+          <label>Location (Optional):</label>
+          <input type="text" id="sloc">
+        </div>
         <button type="submit" class="btn-primary">Add Store</button>
       </form>
       <h3>Store List</h3>
       <div id="store-list"></div>
+    </div>
+
+    <!-- PRODUCTS TAB -->
+    <div id="products" class="tab-content">
+      <h2>Add Product</h2>
+      <form id="product-form" class="form-card">
+        <div class="form-row">
+          <label>Select Store *:</label>
+          <select id="pstore" required>
+            <option value="">-- Select Store --</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Product Name *:</label>
+          <input type="text" id="pname" required>
+        </div>
+        <div class="form-row">
+          <label>Quantity *:</label>
+          <input type="number" id="pqty" min="0" required>
+        </div>
+        <div class="form-row">
+          <label>Price *:</label>
+          <input type="number" id="pprice" step="0.01" min="0" required>
+        </div>
+        <div class="form-row">
+          <label>Barcode/SKU (Optional):</label>
+          <input type="text" id="psku" placeholder="Auto-generate if empty">
+        </div>
+        <button type="submit" class="btn-primary">Add Product</button>
+      </form>
+      <h3>Product List</h3>
+      <div id="product-list"></div>
+    </div>
+
+    <!-- SALES TAB -->
+    <div id="sales" class="tab-content">
+      <h2>Sales Overview</h2>
+      <div class="form-card">
+        <div class="form-row">
+          <label>Select Store:</label>
+          <select id="salestore">
+            <option value="ALL">All Stores</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Date From:</label>
+          <input type="date" id="datefrom">
+        </div>
+        <div class="form-row">
+          <label>Date To:</label>
+          <input type="date" id="dateto">
+        </div>
+        <button id="gen-sales" class="btn-primary">Generate Report</button>
+      </div>
+      <div id="sales-report"></div>
+    </div>
+
+    <!-- STOCKS TAB -->
+    <div id="stocks" class="tab-content">
+      <h2>Stocks Overview</h2>
+      <div class="form-card">
+        <div class="form-row">
+          <label>Select Store:</label>
+          <select id="stockstore">
+            <option value="">-- Select Store --</option>
+          </select>
+        </div>
+        <button id="load-stocks" class="btn-primary">View Stocks</button>
+      </div>
+      <div id="stocks-report"></div>
+    </div>
+
+    <!-- VOID REQUESTS TAB -->
+    <div id="voids" class="tab-content">
+      <h2>Void Requests</h2>
+      <div id="voids-list"></div>
+    </div>
+
+    <!-- STOCK COUNT TAB -->
+    <div id="count" class="tab-content">
+      <h2>Request Stock Count</h2>
+      <form id="count-form" class="form-card">
+        <div class="form-row">
+          <label>Select Store:</label>
+          <select id="countstore" required>
+            <option value="">-- Select Store --</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Select Product(s):</label>
+          <div id="prod-checklist"></div>
+        </div>
+        <button type="submit" class="btn-primary">Send Count Request</button>
+      </form>
+      <h3>Count Responses</h3>
+      <div id="count-responses"></div>
+    </div>
+
+    <!-- CHAT TAB -->
+    <div id="chat" class="tab-content">
+      <h2>Chat Module</h2>
+      <div class="form-row">
+        <label>Chat With:</label>
+        <select id="chat-target">
+          <option value="">-- Select --</option>
+        </select>
+      </div>
+      <div id="chat-messages" class="chat-box"></div>
+      <div style="display:flex; gap:10px; margin-top:10px;">
+        <input type="text" id="chat-input" placeholder="Type message..." style="flex:1;">
+        <button id="chat-send" class="btn-primary" style="width:auto; margin:0;">Send</button>
+      </div>
     </div>
   </div>
 
@@ -49,46 +197,45 @@ import { logout } from '../../auth/login.js';
 const user = requireAuth(['admin']);
 if (!user) {}
 
+document.getElementById('admin-name').textContent = user.name;
 document.getElementById('logout-btn').onclick = logout;
 
+// TABS
 document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.onclick = () => {
+  btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
-  };
+    
+    // Load data when tab opens
+    if (btn.dataset.tab === 'chat') loadChatTargets();
+    if (btn.dataset.tab === 'count') loadCountTabData();
+  });
 });
 
-function loadCashiers() {
-  const data = JSON.parse(localStorage.getItem('cashiers') || '[]');
-  document.getElementById('cashier-list').innerHTML = data.length === 0
-    ? '<p>No cashiers yet.</p>'
-    : data.map((c, i) => `<div class="item-card"><span><strong>${c.name}</strong> — Store: ${c.storeId} | Pass: ${c.password}</span><button data-i="${i}" class="btn-delete">Delete</button></div>`).join('');
-  document.querySelectorAll('#cashier-list .btn-delete').forEach(b => {
-    b.onclick = () => {
-      const all = JSON.parse(localStorage.getItem('cashiers') || '[]');
-      all.splice(parseInt(b.dataset.i), 1);
-      localStorage.setItem('cashiers', JSON.stringify(all));
-      loadCashiers();
-    };
-  });
-}
-
-document.getElementById('cashier-form').onsubmit = e => {
-  e.preventDefault();
-  const all = JSON.parse(localStorage.getItem('cashiers') || '[]');
-  all.push({ id: Date.now(), name: document.getElementById('cname').value.trim(), storeId: document.getElementById('cstore').value.trim(), password: document.getElementById('cpass').value.trim() });
-  localStorage.setItem('cashiers', JSON.stringify(all));
-  e.target.reset();
-  loadCashiers();
-};
-
+// ===== STORES =====
 function loadStores() {
-  const data = JSON.parse(localStorage.getItem('stores') || '[]');
-  document.getElementById('store-list').innerHTML = data.length === 0
-    ? '<p>No stores yet.</p>'
-    : data.map((s, i) => `<div class="item-card"><span><strong>${s.storeId}</strong> — ${s.name}</span><button data-i="${i}" class="btn-delete">Delete</button></div>`).join('');
+  const stores = JSON.parse(localStorage.getItem('stores') || '[]');
+  // Populate dropdowns
+  const selects = ['cstore','pstore','salestore','stockstore','countstore'];
+  selects.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const cur = el.value;
+    el.innerHTML = id === 'salestore' ? '<option value="ALL">All Stores</option>' : '<option value="">-- Select Store --</option>';
+    stores.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.code;
+      opt.textContent = `${s.code} - ${s.name}`;
+      el.appendChild(opt);
+    });
+    el.value = cur;
+  });
+  // List
+  document.getElementById('store-list').innerHTML = stores.length === 0
+    ? '<p>No stores added yet.</p>'
+    : stores.map((s, i) => `<div class="item-card"><div><strong>${s.code}</strong> — ${s.name}<br><small>${s.loc || 'No location'}</small></div><button data-i="${i}" class="btn-delete">Delete</button></div>`).join('');
   document.querySelectorAll('#store-list .btn-delete').forEach(b => {
     b.onclick = () => {
       const all = JSON.parse(localStorage.getItem('stores') || '[]');
@@ -101,15 +248,233 @@ function loadStores() {
 
 document.getElementById('store-form').onsubmit = e => {
   e.preventDefault();
-  const all = JSON.parse(localStorage.getItem('stores') || '[]');
-  all.push({ storeId: document.getElementById('sid').value.trim(), name: document.getElementById('sname').value.trim() });
-  localStorage.setItem('stores', JSON.stringify(all));
+  const stores = JSON.parse(localStorage.getItem('stores') || '[]');
+  let code = document.getElementById('scode').value.trim();
+  if (!code) code = `STORE${String(stores.length + 1).padStart(3,'0')}`;
+  stores.push({
+    code,
+    name: document.getElementById('sname').value.trim(),
+    loc: document.getElementById('sloc').value.trim()
+  });
+  localStorage.setItem('stores', JSON.stringify(stores));
   e.target.reset();
   loadStores();
 };
 
-loadCashiers();
+// ===== CASHIERS =====
+function loadCashiers() {
+  const cashiers = JSON.parse(localStorage.getItem('cashiers') || '[]');
+  document.getElementById('cashier-list').innerHTML = cashiers.length === 0
+    ? '<p>No cashiers added yet.</p>'
+    : cashiers.map((c, i) => `<div class="item-card"><div><strong>${c.fname} ${c.lname || ''}</strong><br>Store: ${c.storeId} | Pass: ${c.password}<br><small>Created: ${c.createdAt || 'N/A'}</small></div><button data-i="${i}" class="btn-delete">Delete</button></div>`).join('');
+  document.querySelectorAll('#cashier-list .btn-delete').forEach(b => {
+    b.onclick = () => {
+      const all = JSON.parse(localStorage.getItem('cashiers') || '[]');
+      all.splice(parseInt(b.dataset.i), 1);
+      localStorage.setItem('cashiers', JSON.stringify(all));
+      loadCashiers();
+    };
+  });
+}
+
+document.getElementById('cashier-form').onsubmit = e => {
+  e.preventDefault();
+  const cashiers = JSON.parse(localStorage.getItem('cashiers') || '[]');
+  const pass = document.getElementById('cpass').value.trim();
+  if (!/^\d{4}$/.test(pass)) return alert('Password must be exactly 4 digits!');
+  cashiers.push({
+    id: Date.now(),
+    fname: document.getElementById('cfname').value.trim(),
+    lname: document.getElementById('clname').value.trim(),
+    storeId: document.getElementById('cstore').value,
+    password: pass,
+    createdAt: new Date().toLocaleString()
+  });
+  localStorage.setItem('cashiers', JSON.stringify(cashiers));
+  e.target.reset();
+  loadCashiers();
+};
+
+// ===== PRODUCTS =====
+function loadProducts() {
+  const products = JSON.parse(localStorage.getItem('products') || '[]');
+  document.getElementById('product-list').innerHTML = products.length === 0
+    ? '<p>No products added yet.</p>'
+    : products.map((p, i) => `<div class="item-card"><div><strong>${p.name}</strong><br>Store: ${p.storeId} | Qty: ${p.qty} | Price: ₱${p.price.toFixed(2)}<br>SKU: ${p.sku}</div></div>`).join('');
+}
+
+document.getElementById('product-form').onsubmit = e => {
+  e.preventDefault();
+  const products = JSON.parse(localStorage.getItem('products') || '[]');
+  let sku = document.getElementById('psku').value.trim();
+  if (!sku) sku = `SKU${Date.now()}`;
+  products.push({
+    id: Date.now(),
+    storeId: document.getElementById('pstore').value,
+    name: document.getElementById('pname').value.trim(),
+    qty: parseInt(document.getElementById('pqty').value),
+    price: parseFloat(document.getElementById('pprice').value),
+    sku
+  });
+  localStorage.setItem('products', JSON.stringify(products));
+  e.target.reset();
+  loadProducts();
+};
+
+// ===== SALES REPORT =====
+document.getElementById('gen-sales').onclick = () => {
+  const store = document.getElementById('salestore').value;
+  const from = document.getElementById('datefrom').value;
+  const to = document.getElementById('dateto').value;
+  let sales = JSON.parse(localStorage.getItem('sales') || '[]');
+  if (store !== 'ALL') sales = sales.filter(s => s.storeId === store);
+  if (from) sales = sales.filter(s => new Date(s.date) >= new Date(from));
+  if (to) sales = sales.filter(s => new Date(s.date) <= new Date(new Date(to).setHours(23,59,59))));
+  const totalCash = sales.filter(s => s.method === 'cash').reduce((a,b)=>a+b.amount,0);
+  const totalGcash = sales.filter(s => s.method === 'gcash').reduce((a,b)=>a+b.amount,0);
+  document.getElementById('sales-report').innerHTML = `
+    <h3>Summary</h3>
+    <p><strong>Total Sales:</strong> ₱${sales.reduce((a,b)=>a+b.amount,0).toFixed(2)}</p>
+    <p>Cash: ₱${totalCash.toFixed(2)}</p>
+    <p>GCash: ₱${totalGcash.toFixed(2)}</p>
+    <h4>Transactions (${sales.length})</h4>
+    ${sales.length === 0 ? '<p>No transactions found.</p>' : sales.map(s => `<p>${s.time} — ${s.item}: ₱${s.amount.toFixed(2)} (${s.method})</p>`).join('')}
+  `;
+};
+
+// ===== STOCKS =====
+document.getElementById('load-stocks').onclick = () => {
+  const store = document.getElementById('stockstore').value;
+  if (!store) return alert('Select a store first!');
+  const products = JSON.parse(localStorage.getItem('products') || '[]').filter(p => p.storeId === store);
+  document.getElementById('stocks-report').innerHTML = products.length === 0
+    ? '<p>No products for this store.</p>'
+    : `<table style="width:100%;border-collapse:collapse;margin-top:10px;"><tr style="background:#eee;"><th style="padding:8px;text-align:left;border:1px solid #ddd;">Product</th><th style="padding:8px;text-align:left;border:1px solid #ddd;">Qty</th><th style="padding:8px;text-align:left;border:1px solid #ddd;">Price</th></tr>` +
+      products.map(p => `<tr><td style="padding:8px;border:1px solid #ddd;">${p.name}</td><td style="padding:8px;border:1px solid #ddd;">${p.qty}</td><td style="padding:8px;border:1px solid #ddd;">₱${p.price.toFixed(2)}</td></tr>`).join('') + `</table>`;
+};
+
+// ===== VOID REQUESTS =====
+function loadVoidRequests() {
+  const voids = JSON.parse(localStorage.getItem('voidRequests') || '[]');
+  document.getElementById('voids-list').innerHTML = voids.length === 0
+    ? '<p>No void requests.</p>'
+    : voids.map((v,i) => `<div class="form-card">
+        <p><strong>From:</strong> ${v.fromName} (${v.storeId})</p>
+        <p><strong>Type:</strong> ${v.type}</p>
+        <p><strong>Reason:</strong> ${v.reason}</p>
+        ${v.type === 'ticket' ? `<p>Wrong Ticket: #${v.wrongTicket || 'N/A'}<br>Correct Ticket: #${v.correctTicket || 'N/A'}</p>` : ''}
+        <p><strong>Status:</strong> ${v.status}</p>
+        ${v.status === 'pending' ? `<button data-i="${i}" data-s="approve" class="btn-success" style="width:auto;margin:5px 5px 5px 0;">Approve</button><button data-i="${i}" data-s="reject" class="btn-delete" style="width:auto;margin:5px 0;">Reject</button>` : ''}
+        <p><small>Submitted: ${v.time}</small></p>
+      </div>`).join('');
+  document.querySelectorAll('#voids-list button').forEach(b => {
+    b.onclick = () => {
+      const all = JSON.parse(localStorage.getItem('voidRequests') || '[]');
+      all[parseInt(b.dataset.i)].status = b.dataset.s === 'approve' ? 'approved' : 'rejected';
+      localStorage.setItem('voidRequests', JSON.stringify(all));
+      loadVoidRequests();
+    };
+  });
+}
+
+// ===== STOCK COUNT REQUESTS =====
+function loadCountTabData() {
+  const storeSel = document.getElementById('countstore');
+  const products = JSON.parse(localStorage.getItem('products') || '[]');
+  const selStore = storeSel.value;
+  const filtered = selStore ? products.filter(p => p.storeId === selStore) : products;
+  document.getElementById('prod-checklist').innerHTML = filtered.length === 0
+    ? '<p>No products yet.</p>'
+    : `<label style="display:block;margin:5px 0;"><input type="checkbox" value="ALL"> All Products</label>` +
+      filtered.map(p => `<label style="display:block;margin:5px 0;"><input type="checkbox" class="prod-check" value="${p.id}"> ${p.name} (Store: ${p.storeId})</label>`).join('');
+  
+  // Responses
+  const responses = JSON.parse(localStorage.getItem('countResponses') || '[]');
+  document.getElementById('count-responses').innerHTML = responses.length === 0
+    ? '<p>No responses yet.</p>'
+    : responses.map(r => `<div class="form-card"><p><strong>Store:</strong> ${r.storeId}</p><p><strong>By:</strong> ${r.fromName}</p><pre>${JSON.stringify(r.counts,null,2)}</pre><p><small>${r.time}</small></p></div>`).join('');
+}
+
+document.getElementById('countstore').onchange = loadCountTabData;
+
+document.getElementById('count-form').onsubmit = e => {
+  e.preventDefault();
+  const storeId = document.getElementById('countstore').value;
+  const allCheck = document.querySelector('#prod-checklist input[value="ALL"]').checked;
+  let selected = [];
+  if (allCheck) {
+    selected = JSON.parse(localStorage.getItem('products') || '[]').filter(p => p.storeId === storeId).map(p => p.id);
+  } else {
+    document.querySelectorAll('.prod-check:checked').forEach(cb => selected.push(cb.value));
+  }
+  if (!selected.length) return alert('Select at least one product!');
+  const requests = JSON.parse(localStorage.getItem('countRequests') || '[]');
+  requests.push({
+    id: Date.now(),
+    storeId,
+    productIds: selected,
+    requestedBy: user.name,
+    time: new Date().toLocaleString(),
+    status: 'pending'
+  });
+  localStorage.setItem('countRequests', JSON.stringify(requests));
+  alert('Request sent to Cashier!');
+  e.target.reset();
+  loadCountTabData();
+};
+
+// ===== CHAT =====
+function loadChatTargets() {
+  const sel = document.getElementById('chat-target');
+  const cashiers = JSON.parse(localStorage.getItem('cashiers') || '[]');
+  sel.innerHTML = '<option value="">-- Select --</option>';
+  cashiers.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = `cashier_${c.id}`;
+    opt.textContent = `${c.fname} ${c.lname || ''} (Cashier)`;
+    sel.appendChild(opt);
+  });
+  const optSP = document.createElement('option');
+  optSP.value = 'sp_main';
+  optSP.textContent = 'Service Provider';
+  sel.appendChild(optSP);
+}
+
+function loadChat(toWhom) {
+  if (!toWhom) return document.getElementById('chat-messages').innerHTML = '<p>Select a person to chat.</p>';
+  const convos = JSON.parse(localStorage.getItem('chats') || '{}');
+  const key = `admin_${toWhom}`;
+  const msgs = convos[key] || [];
+  document.getElementById('chat-messages').innerHTML = msgs.map(m => `<div class="chat-msg ${m.from === 'admin' ? 'sent' : 'received'}"><strong>${m.fromName}:</strong> ${m.text}<br><small>${m.time}</small></div>`).join('') || '<p>No messages yet.</p>';
+  document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
+}
+
+document.getElementById('chat-target').onchange = e => loadChat(e.target.value);
+
+document.getElementById('chat-send').onclick = () => {
+  const to = document.getElementById('chat-target').value;
+  const text = document.getElementById('chat-input').value.trim();
+  if (!to || !text) return;
+  const convos = JSON.parse(localStorage.getItem('chats') || '{}');
+  const key = `admin_${to}`;
+  if (!convos[key]) convos[key] = [];
+  convos[key].push({
+    from: 'admin',
+    fromName: user.name,
+    to: to,
+    text,
+    time: new Date().toLocaleString()
+  });
+  localStorage.setItem('chats', JSON.stringify(convos));
+  document.getElementById('chat-input').value = '';
+  loadChat(to);
+};
+
+// Initialize
 loadStores();
+loadCashiers();
+loadProducts();
+loadVoidRequests();
 </script>
 </body>
 </html>
