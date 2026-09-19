@@ -179,51 +179,69 @@
         <button id="chat-send" class="btn-primary" style="width:auto; margin:0;">Send</button>
       </div>
     </div>
-  </div><script type="module">
+  </div>
+
+<script type="module">
 import { requireAuth } from '../../auth/protect.js';
 import { logout } from '../../auth/login.js';
+
+// Check user authentication
 const user = requireAuth(['admin']);
-if (!user) {}
-document.getElementById('admin-name').textContent = user.name;
-document.getElementById('logout-btn').onclick = logout;
+if (!user) {
+  console.log('❌ Hindi naka-login o hindi admin');
+  window.location.href = '../../index.html';
+} else {
+  console.log('✅ Naka-login bilang:', user.name);
+  document.getElementById('admin-name').textContent = user.name;
+  // Direct logout handler — hindi umaasa sa login.js
+  const logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      logout();
+    });
+  }
+}
 
 // ==========================================
-// TABS — 100% GUARANTEED CLICKABLE
+// TABS — FIXED & GUARANTEED CLICKABLE
 // ==========================================
 function initTabs() {
-  console.log('✅ initTabs tumatakbo'); // Para makita sa Console
+  console.log('✅ initTabs tumatakbo');
   
   const tabButtons = document.querySelectorAll('.tab-btn');
   const tabContents = document.querySelectorAll('.tab-content');
   
-  console.log('📋 Bilang ng tab buttons:', tabButtons.length); // Dapat 8 lumabas
+  console.log('📋 Natagpuan:', tabButtons.length, 'na tab buttons');
   
-  tabButtons.forEach((btn, index) => {
-    // Tanggalin muna ang lahat ng nakakabit na click
-    btn.onclick = null;
-    
+  if (tabButtons.length === 0) {
+    console.log('❌ Walang nakitang .tab-btn — tignan ang HTML class names');
+    return;
+  }
+  
+  tabButtons.forEach(btn => {
     btn.addEventListener('click', function(e) {
       e.preventDefault();
-      e.stopPropagation(); // Para walang ibang humarang
+      e.stopPropagation();
       
-      console.log('🖱️ Pinindot na tab:', this.getAttribute('data-tab'));
+      const targetId = this.getAttribute('data-tab');
+      console.log('🖱️ Pinindot:', targetId);
       
-      // Alisin lahat ng active
+      // Remove all active states
       tabButtons.forEach(b => b.classList.remove('active'));
       tabContents.forEach(c => c.classList.remove('active'));
       
-      // I-set active sa napili
+      // Set active state
       this.classList.add('active');
-      const targetId = this.getAttribute('data-tab');
       const targetContent = document.getElementById(targetId);
       if (targetContent) {
         targetContent.classList.add('active');
-        console.log('✅ Ipinakita ang:', targetId);
+        console.log('✅ Ipinakita:', targetId);
       } else {
-        console.log('❌ HINDI NAKITA ang content para sa:', targetId);
+        console.log('❌ Walang content na may id:', targetId);
       }
       
-      // I-load ang data
+      // Load data for tab
       if (targetId === 'stores') loadStores();
       if (targetId === 'products') loadProducts();
       if (targetId === 'chat') loadChatTargets();
@@ -233,15 +251,15 @@ function initTabs() {
   });
 }
 
-// Siguraduhing tumatakbo — DOUBLE GUARD
-function runInit() {
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initTabs);
-  } else {
-    initTabs();
-  }
-}
-runInit();
+// Run AFTER full page load — prevents null errors
+window.addEventListener('load', function() {
+  console.log('📄 Page fully loaded');
+  initTabs();
+  loadStores();
+  loadCashiers();
+  loadProducts();
+  loadVoidRequests();
+});
 
 // ===== STORES =====
 function loadStores() {
@@ -251,7 +269,9 @@ function loadStores() {
     const el = document.getElementById(id);
     if (!el) return;
     const cur = el.value;
-    el.innerHTML = id === 'salestore' ? '<option value="ALL">All Stores</option>' : '<option value="">-- Select Store --</option>';
+    el.innerHTML = id === 'salestore' 
+      ? '<option value="ALL">All Stores</option>' 
+      : '<option value="">-- Select Store --</option>';
     stores.forEach(s => {
       const opt = document.createElement('option');
       opt.value = s.code;
@@ -260,9 +280,11 @@ function loadStores() {
     });
     el.value = cur;
   });
+  
   document.getElementById('store-list').innerHTML = stores.length === 0
     ? '<p>No stores added yet.</p>'
     : stores.map((s, i) => `<div class="item-card"><div><strong>${s.code}</strong> — ${s.name}<br><small>${s.loc || 'No location'}</small></div><button data-i="${i}" class="btn-delete">Delete</button></div>`).join('');
+  
   document.querySelectorAll('#store-list .btn-delete').forEach(b => {
     b.onclick = () => {
       const all = JSON.parse(localStorage.getItem('stores') || '[]');
@@ -272,6 +294,7 @@ function loadStores() {
     };
   });
 }
+
 document.getElementById('store-form').onsubmit = e => {
   e.preventDefault();
   const stores = JSON.parse(localStorage.getItem('stores') || '[]');
@@ -293,6 +316,7 @@ function loadCashiers() {
   document.getElementById('cashier-list').innerHTML = cashiers.length === 0
     ? '<p>No cashiers added yet.</p>'
     : cashiers.map((c, i) => `<div class="item-card"><div><strong>${c.fname} ${c.lname || ''}</strong><br>Store: ${c.storeId} | Pass: ${c.password}<br><small>Created: ${c.createdAt || 'N/A'}</small></div><button data-i="${i}" class="btn-delete">Delete</button></div>`).join('');
+  
   document.querySelectorAll('#cashier-list .btn-delete').forEach(b => {
     b.onclick = () => {
       const all = JSON.parse(localStorage.getItem('cashiers') || '[]');
@@ -302,6 +326,7 @@ function loadCashiers() {
     };
   });
 }
+
 document.getElementById('cashier-form').onsubmit = e => {
   e.preventDefault();
   const cashiers = JSON.parse(localStorage.getItem('cashiers') || '[]');
@@ -327,6 +352,7 @@ function loadProducts() {
     ? '<p>No products added yet.</p>'
     : products.map((p, i) => `<div class="item-card"><div><strong>${p.name}</strong><br>Store: ${p.storeId} | Qty: ${p.qty} | Price: ₱${p.price.toFixed(2)}<br>SKU: ${p.sku}</div></div>`).join('');
 }
+
 document.getElementById('product-form').onsubmit = e => {
   e.preventDefault();
   const products = JSON.parse(localStorage.getItem('products') || '[]');
@@ -351,6 +377,7 @@ document.getElementById('gen-sales').onclick = () => {
   const from = document.getElementById('datefrom').value;
   const to = document.getElementById('dateto').value;
   let sales = JSON.parse(localStorage.getItem('sales') || '[]');
+  
   if (store !== 'ALL') sales = sales.filter(s => s.storeId === store);
   if (from) sales = sales.filter(s => new Date(s.date) >= new Date(from));
   if (to) {
@@ -358,6 +385,7 @@ document.getElementById('gen-sales').onclick = () => {
     endDate.setHours(23, 59, 59);
     sales = sales.filter(s => new Date(s.date) <= endDate);
   }
+  
   const totalCash = sales.filter(s => s.method === 'cash').reduce((a, b) => a + b.total, 0);
   const totalGcash = sales.filter(s => s.method === 'gcash').reduce((a, b) => a + b.total, 0);
   const totalSplitCash = sales.filter(s => s.method === 'split').reduce((a, b) => a + (b.cashPart || 0), 0);
@@ -399,6 +427,7 @@ function loadVoidRequests() {
         ${v.status === 'pending' ? `<button data-i="${i}" data-s="approve" class="btn-success" style="width:auto;margin:5px 5px 5px 0;">Approve</button><button data-i="${i}" data-s="reject" class="btn-delete" style="width:auto;margin:5px 0;">Reject</button>` : ''}
         <p><small>Submitted: ${v.time}</small></p>
       </div>`).join('');
+  
   document.querySelectorAll('#voids-list button').forEach(b => {
     b.onclick = () => {
       const all = JSON.parse(localStorage.getItem('voidRequests') || '[]');
@@ -415,6 +444,7 @@ function loadCountTabData() {
   const products = JSON.parse(localStorage.getItem('products') || '[]');
   const selStore = storeSel.value;
   const filtered = selStore ? products.filter(p => p.storeId === selStore) : products;
+  
   document.getElementById('prod-checklist').innerHTML = filtered.length === 0
     ? '<p>No products yet.</p>'
     : `<label style="display:block;margin:5px 0;"><input type="checkbox" value="ALL"> All Products</label>` +
@@ -425,18 +455,23 @@ function loadCountTabData() {
     ? '<p>No responses yet.</p>'
     : responses.map(r => `<div class="form-card"><p><strong>Store:</strong> ${r.storeId}</p><p><strong>By:</strong> ${r.fromName}</p><pre>${JSON.stringify(r.counts, null, 2)}</pre><p><small>${r.time}</small></p></div>`).join('');
 }
+
 document.getElementById('countstore').onchange = loadCountTabData;
+
 document.getElementById('count-form').onsubmit = e => {
   e.preventDefault();
   const storeId = document.getElementById('countstore').value;
   const allCheck = document.querySelector('#prod-checklist input[value="ALL"]')?.checked;
   let selected = [];
+  
   if (allCheck) {
     selected = JSON.parse(localStorage.getItem('products') || '[]').filter(p => p.storeId === storeId).map(p => p.id);
   } else {
     document.querySelectorAll('.prod-check:checked').forEach(cb => selected.push(cb.value));
   }
+  
   if (!selected.length) return alert('Select at least one product!');
+  
   const requests = JSON.parse(localStorage.getItem('countRequests') || '[]');
   requests.push({
     id: Date.now(),
@@ -446,6 +481,7 @@ document.getElementById('count-form').onsubmit = e => {
     time: new Date().toLocaleString(),
     status: 'pending'
   });
+  
   localStorage.setItem('countRequests', JSON.stringify(requests));
   alert('Request sent to Cashier!');
   e.target.reset();
@@ -468,6 +504,7 @@ function loadChatTargets() {
   optSP.textContent = 'Service Provider';
   sel.appendChild(optSP);
 }
+
 function loadChat(toWhom) {
   if (!toWhom) return document.getElementById('chat-messages').innerHTML = '<p>Select a person to chat.</p>';
   const convos = JSON.parse(localStorage.getItem('chats') || '{}');
@@ -476,14 +513,18 @@ function loadChat(toWhom) {
   document.getElementById('chat-messages').innerHTML = msgs.map(m => `<div class="chat-msg ${m.from === 'admin' ? 'sent' : 'received'}"><strong>${m.fromName}:</strong> ${m.text}<br><small>${m.time}</small></div>`).join('') || '<p>No messages yet.</p>';
   document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
 }
+
 document.getElementById('chat-target').onchange = e => loadChat(e.target.value);
+
 document.getElementById('chat-send').onclick = () => {
   const to = document.getElementById('chat-target').value;
   const text = document.getElementById('chat-input').value.trim();
   if (!to || !text) return;
+  
   const convos = JSON.parse(localStorage.getItem('chats') || '{}');
   const key = `admin_${to}`;
   const reverseKey = `${to}_admin`;
+  
   if (!convos[key]) convos[key] = [];
   convos[key].push({
     from: 'admin',
@@ -491,6 +532,7 @@ document.getElementById('chat-send').onclick = () => {
     text,
     time: new Date().toLocaleString()
   });
+  
   if (!convos[reverseKey]) convos[reverseKey] = [];
   convos[reverseKey].push({
     from: 'admin',
@@ -498,16 +540,11 @@ document.getElementById('chat-send').onclick = () => {
     text,
     time: new Date().toLocaleString()
   });
+  
   localStorage.setItem('chats', JSON.stringify(convos));
   document.getElementById('chat-input').value = '';
   loadChat(to);
 };
-
-// Initialize
-loadStores();
-loadCashiers();
-loadProducts();
-loadVoidRequests();
 </script>
 </body>
 </html>
