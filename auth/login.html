@@ -5,22 +5,62 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login — BPOS</title>
   <link rel="stylesheet" href="../assets/css/style.css">
+  <style>
+    .login-container{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);}
+    .login-box{background:#fff;padding:30px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.15);width:100%;max-width:400px;}
+    .login-box h1{text-align:center;margin-bottom:25px;color:#2d3748;}
+    .form-group{margin-bottom:15px;}
+    .form-group label{display:block;margin-bottom:5px;font-weight:600;color:#4a5568;}
+    .form-input{width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:6px;font-size:1rem;box-sizing:border-box;}
+    .form-input:focus{outline:none;border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,0.2);}
+    .btn-primary{width:100%;padding:12px;background:#667eea;color:#fff;border:none;border-radius:6px;font-size:1rem;font-weight:600;cursor:pointer;transition:background 0.2s;}
+    .btn-primary:hover{background:#5568d3;}
+    .hint-text{text-align:center;margin-top:15px;font-size:0.85rem;color:#718096;}
+    .online-indicator{position:fixed;top:10px;right:10px;padding:6px 12px;border-radius:20px;font-weight:bold;font-size:0.85rem;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.1);}
+    .online-indicator.online{color:#28a745;}
+    .online-indicator.offline{color:#dc3545;}
+  </style>
 </head>
 <body>
+  <div id="online-indicator" class="online-indicator">● Checking...</div>
   <div class="login-container">
-    <h1>BPOS — Login</h1>
-    <form id="login-form">
-      <label>Select Role:</label>
-      <select id="role">
-        <option value="admin">Admin / Owner</option>
-        <option value="cashier">Cashier</option>
-        <option value="service_provider">Service Provider</option>
-      </select>
-      <label>Password:</label>
-      <input type="password" id="password" placeholder="Enter password">
-      <button type="submit" class="btn-primary">Log In</button>
-    </form>
+    <div class="login-box">
+      <h1>🔐 BPOS — Login</h1>
+      <form id="login-form">
+        <div class="form-group">
+          <label>Select Role:</label>
+          <select id="role" class="form-input" required>
+            <option value="">— Choose your role —</option>
+            <option value="admin">Admin / Owner</option>
+            <option value="cashier">Cashier</option>
+            <option value="service_provider">Service Provider</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Password:</label>
+          <input type="password" id="password" placeholder="Enter your password" class="form-input" required>
+        </div>
+        <button type="submit" class="btn-primary">Log In</button>
+      </form>
+      <p class="hint-text">
+        Defaults: Admin=8888 | SP=19970407chan<br>
+        Cashier accounts created by Admin
+      </p>
+    </div>
   </div>
-  <script type="module" src="login.js"></script>
+
+<script type="module" src="login.js"></script>
+<script>
+  // Online status
+  const indicator = document.getElementById('online-indicator');
+  function updateStatus(){
+    const isOnline = navigator.onLine;
+    indicator.className = `online-indicator ${isOnline ? 'online' : 'offline'}`;
+    indicator.textContent = isOnline ? '● Online' : '● Offline';
+  }
+  window.addEventListener('online', updateStatus);
+  window.addEventListener('offline', updateStatus);
+  updateStatus();
+</script>
 </body>
 </html>
