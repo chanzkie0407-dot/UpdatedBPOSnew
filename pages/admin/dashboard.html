@@ -15,7 +15,6 @@
         <button id="logout-btn" class="btn-logout">Log Out</button>
       </div>
     </div>
-
     <div class="tabs">
       <button class="tab-btn active" data-tab="cashiers">Cashier Accounts</button>
       <button class="tab-btn" data-tab="stores">Stores</button>
@@ -26,7 +25,6 @@
       <button class="tab-btn" data-tab="count">Stock Count</button>
       <button class="tab-btn" data-tab="chat">Chat</button>
     </div>
-
     <!-- CASHIERS TAB -->
     <div id="cashiers" class="tab-content active">
       <h2>Add Cashier</h2>
@@ -54,7 +52,6 @@
       <h3>Cashier List</h3>
       <div id="cashier-list"></div>
     </div>
-
     <!-- STORES TAB -->
     <div id="stores" class="tab-content">
       <h2>Add Store</h2>
@@ -76,7 +73,6 @@
       <h3>Store List</h3>
       <div id="store-list"></div>
     </div>
-
     <!-- PRODUCTS TAB -->
     <div id="products" class="tab-content">
       <h2>Add Product</h2>
@@ -108,7 +104,6 @@
       <h3>Product List</h3>
       <div id="product-list"></div>
     </div>
-
     <!-- SALES TAB -->
     <div id="sales" class="tab-content">
       <h2>Sales Overview</h2>
@@ -131,7 +126,6 @@
       </div>
       <div id="sales-report"></div>
     </div>
-
     <!-- STOCKS TAB -->
     <div id="stocks" class="tab-content">
       <h2>Stocks Overview</h2>
@@ -146,13 +140,11 @@
       </div>
       <div id="stocks-report"></div>
     </div>
-
     <!-- VOID REQUESTS TAB -->
     <div id="voids" class="tab-content">
       <h2>Void Requests</h2>
       <div id="voids-list"></div>
     </div>
-
     <!-- STOCK COUNT TAB -->
     <div id="count" class="tab-content">
       <h2>Request Stock Count</h2>
@@ -172,7 +164,6 @@
       <h3>Count Responses</h3>
       <div id="count-responses"></div>
     </div>
-
     <!-- CHAT TAB -->
     <div id="chat" class="tab-content">
       <h2>Chat Module</h2>
@@ -189,18 +180,15 @@
       </div>
     </div>
   </div>
-
 <script type="module">
 import { requireAuth } from '../../auth/protect.js';
 import { logout } from '../../auth/login.js';
-
 const user = requireAuth(['admin']);
 if (!user) {}
-
 document.getElementById('admin-name').textContent = user.name;
 document.getElementById('logout-btn').onclick = logout;
 
-// TABS
+// TABS — FIXED: guaranteed to run before any error
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -208,16 +196,16 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
     
-    // Load data when tab opens
     if (btn.dataset.tab === 'chat') loadChatTargets();
     if (btn.dataset.tab === 'count') loadCountTabData();
+    if (btn.dataset.tab === 'stocks') {}
+    if (btn.dataset.tab === 'voids') loadVoidRequests();
   });
 });
 
 // ===== STORES =====
 function loadStores() {
   const stores = JSON.parse(localStorage.getItem('stores') || '[]');
-  // Populate dropdowns
   const selects = ['cstore','pstore','salestore','stockstore','countstore'];
   selects.forEach(id => {
     const el = document.getElementById(id);
@@ -232,7 +220,6 @@ function loadStores() {
     });
     el.value = cur;
   });
-  // List
   document.getElementById('store-list').innerHTML = stores.length === 0
     ? '<p>No stores added yet.</p>'
     : stores.map((s, i) => `<div class="item-card"><div><strong>${s.code}</strong> — ${s.name}<br><small>${s.loc || 'No location'}</small></div><button data-i="${i}" class="btn-delete">Delete</button></div>`).join('');
@@ -245,7 +232,6 @@ function loadStores() {
     };
   });
 }
-
 document.getElementById('store-form').onsubmit = e => {
   e.preventDefault();
   const stores = JSON.parse(localStorage.getItem('stores') || '[]');
@@ -276,7 +262,6 @@ function loadCashiers() {
     };
   });
 }
-
 document.getElementById('cashier-form').onsubmit = e => {
   e.preventDefault();
   const cashiers = JSON.parse(localStorage.getItem('cashiers') || '[]');
@@ -302,7 +287,6 @@ function loadProducts() {
     ? '<p>No products added yet.</p>'
     : products.map((p, i) => `<div class="item-card"><div><strong>${p.name}</strong><br>Store: ${p.storeId} | Qty: ${p.qty} | Price: ₱${p.price.toFixed(2)}<br>SKU: ${p.sku}</div></div>`).join('');
 }
-
 document.getElementById('product-form').onsubmit = e => {
   e.preventDefault();
   const products = JSON.parse(localStorage.getItem('products') || '[]');
@@ -321,7 +305,7 @@ document.getElementById('product-form').onsubmit = e => {
   loadProducts();
 };
 
-// ===== SALES REPORT =====
+// ===== SALES REPORT — FIXED: removed extra ) =====
 document.getElementById('gen-sales').onclick = () => {
   const store = document.getElementById('salestore').value;
   const from = document.getElementById('datefrom').value;
@@ -329,16 +313,23 @@ document.getElementById('gen-sales').onclick = () => {
   let sales = JSON.parse(localStorage.getItem('sales') || '[]');
   if (store !== 'ALL') sales = sales.filter(s => s.storeId === store);
   if (from) sales = sales.filter(s => new Date(s.date) >= new Date(from));
-  if (to) sales = sales.filter(s => new Date(s.date) <= new Date(new Date(to).setHours(23,59,59))));
-  const totalCash = sales.filter(s => s.method === 'cash').reduce((a,b)=>a+b.amount,0);
-  const totalGcash = sales.filter(s => s.method === 'gcash').reduce((a,b)=>a+b.amount,0);
+  if (to) {
+    const endDate = new Date(to);
+    endDate.setHours(23, 59, 59);
+    sales = sales.filter(s => new Date(s.date) <= endDate);
+  }
+  const totalCash = sales.filter(s => s.method === 'cash').reduce((a, b) => a + b.total, 0);
+  const totalGcash = sales.filter(s => s.method === 'gcash').reduce((a, b) => a + b.total, 0);
+  const totalSplitCash = sales.filter(s => s.method === 'split').reduce((a, b) => a + (b.cashPart || 0), 0);
+  const totalSplitGcash = sales.filter(s => s.method === 'split').reduce((a, b) => a + (b.gcashPart || 0), 0);
+  
   document.getElementById('sales-report').innerHTML = `
     <h3>Summary</h3>
-    <p><strong>Total Sales:</strong> ₱${sales.reduce((a,b)=>a+b.amount,0).toFixed(2)}</p>
-    <p>Cash: ₱${totalCash.toFixed(2)}</p>
-    <p>GCash: ₱${totalGcash.toFixed(2)}</p>
+    <p><strong>Total Sales:</strong> ₱${sales.reduce((a, b) => a + b.total, 0).toFixed(2)}</p>
+    <p>Cash: ₱${(totalCash + totalSplitCash).toFixed(2)}</p>
+    <p>GCash: ₱${(totalGcash + totalSplitGcash).toFixed(2)}</p>
     <h4>Transactions (${sales.length})</h4>
-    ${sales.length === 0 ? '<p>No transactions found.</p>' : sales.map(s => `<p>${s.time} — ${s.item}: ₱${s.amount.toFixed(2)} (${s.method})</p>`).join('')}
+    ${sales.length === 0 ? '<p>No transactions found.</p>' : sales.map(s => `<p>${s.fullTime} — ${s.items.length} item(s): ₱${s.total.toFixed(2)} (${s.method})</p>`).join('')}
   `;
 };
 
@@ -358,11 +349,12 @@ function loadVoidRequests() {
   const voids = JSON.parse(localStorage.getItem('voidRequests') || '[]');
   document.getElementById('voids-list').innerHTML = voids.length === 0
     ? '<p>No void requests.</p>'
-    : voids.map((v,i) => `<div class="form-card">
+    : voids.map((v, i) => `<div class="form-card">
         <p><strong>From:</strong> ${v.fromName} (${v.storeId})</p>
         <p><strong>Type:</strong> ${v.type}</p>
         <p><strong>Reason:</strong> ${v.reason}</p>
-        ${v.type === 'ticket' ? `<p>Wrong Ticket: #${v.wrongTicket || 'N/A'}<br>Correct Ticket: #${v.correctTicket || 'N/A'}</p>` : ''}
+        ${v.type === 'ticket' ? `<p>Wrong Ticket: ${v.wrongTicket || 'N/A'}<br>Correct Ticket: ${v.correctTicket || 'N/A'}</p>` : ''}
+        ${v.type === 'product_out' ? `<p>Product: ${v.productName || 'N/A'} × Qty: ${v.qty || 1}</p>` : ''}
         <p><strong>Status:</strong> ${v.status}</p>
         ${v.status === 'pending' ? `<button data-i="${i}" data-s="approve" class="btn-success" style="width:auto;margin:5px 5px 5px 0;">Approve</button><button data-i="${i}" data-s="reject" class="btn-delete" style="width:auto;margin:5px 0;">Reject</button>` : ''}
         <p><small>Submitted: ${v.time}</small></p>
@@ -388,19 +380,16 @@ function loadCountTabData() {
     : `<label style="display:block;margin:5px 0;"><input type="checkbox" value="ALL"> All Products</label>` +
       filtered.map(p => `<label style="display:block;margin:5px 0;"><input type="checkbox" class="prod-check" value="${p.id}"> ${p.name} (Store: ${p.storeId})</label>`).join('');
   
-  // Responses
   const responses = JSON.parse(localStorage.getItem('countResponses') || '[]');
   document.getElementById('count-responses').innerHTML = responses.length === 0
     ? '<p>No responses yet.</p>'
-    : responses.map(r => `<div class="form-card"><p><strong>Store:</strong> ${r.storeId}</p><p><strong>By:</strong> ${r.fromName}</p><pre>${JSON.stringify(r.counts,null,2)}</pre><p><small>${r.time}</small></p></div>`).join('');
+    : responses.map(r => `<div class="form-card"><p><strong>Store:</strong> ${r.storeId}</p><p><strong>By:</strong> ${r.fromName}</p><pre>${JSON.stringify(r.counts, null, 2)}</pre><p><small>${r.time}</small></p></div>`).join('');
 }
-
 document.getElementById('countstore').onchange = loadCountTabData;
-
 document.getElementById('count-form').onsubmit = e => {
   e.preventDefault();
   const storeId = document.getElementById('countstore').value;
-  const allCheck = document.querySelector('#prod-checklist input[value="ALL"]').checked;
+  const allCheck = document.querySelector('#prod-checklist input[value="ALL"]')?.checked;
   let selected = [];
   if (allCheck) {
     selected = JSON.parse(localStorage.getItem('products') || '[]').filter(p => p.storeId === storeId).map(p => p.id);
@@ -431,7 +420,7 @@ function loadChatTargets() {
   cashiers.forEach(c => {
     const opt = document.createElement('option');
     opt.value = `cashier_${c.id}`;
-    opt.textContent = `${c.fname} ${c.lname || ''} (Cashier)`;
+    opt.textContent = `${c.fname} ${c.lname || ''} (Cashier — ${c.storeId})`;
     sel.appendChild(opt);
   });
   const optSP = document.createElement('option');
@@ -439,7 +428,6 @@ function loadChatTargets() {
   optSP.textContent = 'Service Provider';
   sel.appendChild(optSP);
 }
-
 function loadChat(toWhom) {
   if (!toWhom) return document.getElementById('chat-messages').innerHTML = '<p>Select a person to chat.</p>';
   const convos = JSON.parse(localStorage.getItem('chats') || '{}');
@@ -448,20 +436,25 @@ function loadChat(toWhom) {
   document.getElementById('chat-messages').innerHTML = msgs.map(m => `<div class="chat-msg ${m.from === 'admin' ? 'sent' : 'received'}"><strong>${m.fromName}:</strong> ${m.text}<br><small>${m.time}</small></div>`).join('') || '<p>No messages yet.</p>';
   document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
 }
-
 document.getElementById('chat-target').onchange = e => loadChat(e.target.value);
-
 document.getElementById('chat-send').onclick = () => {
   const to = document.getElementById('chat-target').value;
   const text = document.getElementById('chat-input').value.trim();
   if (!to || !text) return;
   const convos = JSON.parse(localStorage.getItem('chats') || '{}');
   const key = `admin_${to}`;
+  const reverseKey = `${to}_admin`;
   if (!convos[key]) convos[key] = [];
   convos[key].push({
     from: 'admin',
     fromName: user.name,
-    to: to,
+    text,
+    time: new Date().toLocaleString()
+  });
+  if (!convos[reverseKey]) convos[reverseKey] = [];
+  convos[reverseKey].push({
+    from: 'admin',
+    fromName: user.name,
     text,
     time: new Date().toLocaleString()
   });
