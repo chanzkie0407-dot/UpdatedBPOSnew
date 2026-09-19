@@ -26,12 +26,13 @@
     .badge.pending{background:#fff3cd;color:#856404;}
     .system-note{background:#e3f2fd;border-left:4px solid #2196f3;padding:10px;margin:10px 0;}
     .danger-zone{border:1px solid #dc3545;background:#fff5f5;padding:15px;border-radius:8px;margin-top:20px;}
+    .subscription-alert{background:#fff3cd;border-left:4px solid #ffc107;padding:12px;margin:10px 0;}
+    .subscription-alert.expired{background:#f8d7da;border-color:#dc3545;}
   </style>
 </head>
 <body>
   <!-- Online Status -->
-  <div id="online-indicator" class="online-indicator online">● Online</div>
-
+  <div id="online-indicator" class="online-indicator">● Checking...</div>
   <div class="sp-container">
     <div class="header">
       <div>
@@ -39,6 +40,12 @@
         <p>System Management & Support</p>
       </div>
       <button id="logout-btn" class="btn-logout">Log Out</button>
+    </div>
+
+    <!-- Subscription Status -->
+    <div id="sub-alert" class="subscription-alert hidden">
+      <strong>📊 System Overview:</strong>
+      <span id="sub-status-text"></span>
     </div>
 
     <!-- Tabs -->
@@ -72,7 +79,6 @@
           <p style="font-size:1.8rem;font-weight:bold;" id="stat-cashiers">0</p>
         </div>
       </div>
-
       <h3>Recent Activity</h3>
       <div id="recent-activity"></div>
     </div>
@@ -84,13 +90,18 @@
       <div class="form-card">
         <h4>Create / Extend Subscription</h4>
         <input type="text" id="sub-admin-email" placeholder="Admin Username / Account ID" class="form-input" required>
-        <input type="number" id="sub-duration" placeholder="Days (e.g. 30, 365)" min="1" class="form-input" required>
+        <input type="number" id="sub-duration" placeholder="Days (e.g. 7, 14, 30)" min="1" class="form-input" required>
         <label style="display:flex;align-items:center;gap:8px;margin:8px 0;">
           <input type="checkbox" id="sub-force-active"> Force Active (ignore expiry)
         </label>
         <button id="create-sub-btn" class="btn-primary">Create / Extend</button>
+        <p style="font-size:0.85rem;color:#666;margin-top:8px;">
+          Standard Rates: <br>
+          💵 199 — Weekly (7 days)<br>
+          💵 325 — Bi-Weekly (14 days)<br>
+          💵 579 — Monthly (30 days)
+        </p>
       </div>
-
       <h4 style="margin-top:20px;">All Subscriptions</h4>
       <div id="subs-list"></div>
     </div>
@@ -106,7 +117,6 @@
         <input type="password" id="new-admin-pass" placeholder="Admin Password" class="form-input" required>
         <button id="add-admin-btn" class="btn-primary">Create Admin Account</button>
       </div>
-
       <h4 style="margin-top:20px;">Change Admin Password</h4>
       <div class="form-card">
         <select id="admin-to-change" class="form-input">
@@ -115,14 +125,12 @@
         <input type="password" id="new-admin-pass-set" placeholder="New Admin Password" class="form-input" required>
         <button id="change-admin-pass-btn" class="btn-primary">Update Password</button>
       </div>
-
       <h4 style="margin-top:20px;">Admin Accounts List</h4>
       <div id="admins-list"></div>
-
       <div class="danger-zone">
         <h4>⚠️ Danger Zone</h4>
         <button id="reset-all-btn" class="btn-secondary" style="background:#dc3545;color:#fff;">Reset All Data (Demo Clear)</button>
-        <p style="font-size:0.85rem;margin-top:8px;">Clears all stores, products, sales, and users — for demo reset only</p>
+        <p style="font-size:0.85rem;margin-top:8px;">Clears all stores, products, sales, and users — for demo reset only. Cannot be undone!</p>
       </div>
     </div>
 
@@ -136,7 +144,6 @@
       </select>
       <textarea id="sp-msg-textarea" rows="4" placeholder="Enter message..." class="form-input"></textarea>
       <button id="send-sp-msg" class="btn-primary">Send Message</button>
-
       <h4 style="margin-top:20px;">Sent Messages</h4>
       <div id="sp-msg-log"></div>
     </div>
@@ -182,7 +189,7 @@
 import { requireAuth } from '../../auth/protect.js';
 import { logout } from '../../auth/login.js';
 
-// ========== AUTH ==========
+// ========== FIXED ROLE CHECK ==========
 const user = requireAuth(['service_provider']);
 if (!user) window.location.href = '../../auth/login.html';
 const CURRENT_USER = user;
@@ -197,6 +204,43 @@ function updateOnlineStatus() {
 window.addEventListener('online', updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
 updateOnlineStatus();
+
+// ========== SUBSCRIPTION STATUS SUMMARY ==========
+function checkSystemSubscriptions() {
+  const subs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
+  const alertBox = document.getElementById('sub-alert');
+  const textSpan = document.getElementById('sub-status-text');
+  
+  if (subs.length === 0) {
+    alertBox.classList.remove('hidden');
+    textSpan.textContent = 'No subscriptions created yet. Free trial activates when first Admin account is created.';
+    return;
+  }
+  
+  const active = subs.filter(s => new Date(s.expiryAt) > new Date() || s.forceActive);
+  const expiring = subs.filter(s => {
+    const expiry = new Date(s.expiryAt);
+    const daysLeft = (expiry - new Date()) / 86400000;
+    return daysLeft > 0 && daysLeft <= 3;
+  });
+  const expired = subs.filter(s => {
+    const expiry = new Date(s.expiryAt);
+    return new Date() > expiry && !s.forceActive;
+  });
+  
+  alertBox.classList.remove('hidden');
+  if (expired.length > 0) {
+    alertBox.classList.add('expired');
+    textSpan.textContent = `🔴 ${expired.length} subscription(s) EXPIRED | Active: ${active.length} | Expiring Soon: ${expiring.length}`;
+  } else if (expiring.length > 0) {
+    alertBox.classList.remove('expired');
+    textSpan.textContent = `⚠️ ${expiring.length} subscription(s) expiring soon | Active: ${active.length}`;
+  } else {
+    alertBox.classList.remove('expired');
+    textSpan.textContent = `✅ All ${active.length} subscription(s) active — no expiring soon`;
+  }
+}
+checkSystemSubscriptions();
 
 // ========== LOGOUT ==========
 function performLogout() {
@@ -214,7 +258,6 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
-
     switch(btn.dataset.tab) {
       case 'overview': loadOverview(); break;
       case 'subscription': loadSubsList(); break;
@@ -232,19 +275,18 @@ function loadOverview() {
   const subs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
   const cashiers = JSON.parse(localStorage.getItem('cashiers') || '[]');
   
-  const activeSubs = subs.filter(s => new Date(s.expiryAt) > new Date());
+  const activeSubs = subs.filter(s => new Date(s.expiryAt) > new Date() || s.forceActive);
   const expiring = subs.filter(s => {
     const expiry = new Date(s.expiryAt);
     const daysLeft = (expiry - new Date()) / (1000*60*60*24);
     return daysLeft > 0 && daysLeft <= 7;
   });
-
+  
   document.getElementById('stat-admins').textContent = admins.length;
   document.getElementById('stat-active-subs').textContent = activeSubs.length;
   document.getElementById('stat-expiring').textContent = expiring.length;
   document.getElementById('stat-cashiers').textContent = cashiers.length;
-
-  // Recent activity
+  
   const logs = JSON.parse(localStorage.getItem('systemActivityLog') || '[]').slice(-15).reverse();
   document.getElementById('recent-activity').innerHTML = logs.length === 0
     ? '<p>No recent activity.</p>'
@@ -254,12 +296,13 @@ function loadOverview() {
           <strong>${l.action}</strong> ${l.details ? `: ${l.details}` : ''}
         </div>
       `).join('');
+  
+  checkSystemSubscriptions();
 }
 
 // ========== SUBSCRIPTION MANAGEMENT ==========
 function loadSubsList() {
   const subs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
-  const stores = JSON.parse(localStorage.getItem('stores') || '[]');
   
   document.getElementById('subs-list').innerHTML = subs.length === 0
     ? '<p>No subscriptions created.</p>'
@@ -281,8 +324,7 @@ function loadSubsList() {
           </div>
         `;
       }).join('');
-
-  // Extend handlers
+  
   document.querySelectorAll('.extend-btn').forEach(btn => {
     btn.onclick = () => {
       const subs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
@@ -296,19 +338,20 @@ function loadSubsList() {
     };
   });
 }
+
 document.getElementById('create-sub-btn').onclick = () => {
   const adminId = document.getElementById('sub-admin-email').value.trim();
   const days = parseInt(document.getElementById('sub-duration').value);
   const forceActive = document.getElementById('sub-force-active').checked;
   
   if (!adminId || !days || days < 1) return alert('Fill valid fields.');
-
+  
   const expiry = new Date();
   expiry.setDate(expiry.getDate() + days);
-
+  
   const subs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
-  // Replace existing for same admin
   const existingIdx = subs.findIndex(s => s.adminId === adminId || s.adminUsername === adminId);
+  
   const subRec = {
     id: `sub-${Date.now()}`,
     adminId,
@@ -318,10 +361,10 @@ document.getElementById('create-sub-btn').onclick = () => {
     createdAt: new Date().toISOString(),
     createdBy: 'SP'
   };
-
+  
   if (existingIdx >= 0) subs[existingIdx] = subRec;
   else subs.push(subRec);
-
+  
   localStorage.setItem('subscriptions', JSON.stringify(subs));
   logAction('Subscription Created/Extended', `Admin: ${adminId}, ${days} days, Expiry: ${expiry.toLocaleDateString()}`);
   
@@ -335,10 +378,9 @@ document.getElementById('create-sub-btn').onclick = () => {
 function loadAdminsList() {
   const admins = JSON.parse(localStorage.getItem('adminAccounts') || '[]');
   
-  // Populate selectors
   document.getElementById('admin-to-change').innerHTML = '<option value="">— Select Admin —</option>' +
     admins.map(a => `<option value="${a.id}">${a.username}</option>`).join('');
-
+  
   document.getElementById('admins-list').innerHTML = admins.length === 0
     ? '<p>No admin accounts registered.</p>'
     : admins.map(a => `
@@ -348,6 +390,7 @@ function loadAdminsList() {
         </div>
       `).join('');
 }
+
 document.getElementById('add-admin-btn').onclick = () => {
   const user = document.getElementById('new-admin-user').value.trim();
   const pass = document.getElementById('new-admin-pass').value.trim();
@@ -357,20 +400,39 @@ document.getElementById('add-admin-btn').onclick = () => {
   const admins = JSON.parse(localStorage.getItem('adminAccounts') || '[]');
   if (admins.find(a => a.username === user)) return alert('Username exists.');
   
+  const now = new Date();
+  const trialExpiry = new Date(now.getTime() + 7 * 86400000);
+  
   admins.push({
     id: `admin-${Date.now()}`,
     username: user,
     password: pass,
-    createdAt: new Date().toISOString()
+    createdAt: now.toISOString()
   });
   localStorage.setItem('adminAccounts', JSON.stringify(admins));
-  logAction('Admin Account Created', `Username: ${user}`);
   
-  alert('Admin account created ✅');
+  // Auto-create 7-day free trial subscription
+  const subs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
+  subs.push({
+    id: `sub-${Date.now()}`,
+    adminId: user,
+    adminUsername: user,
+    expiryAt: trialExpiry.toISOString(),
+    forceActive: false,
+    createdAt: now.toISOString(),
+    createdBy: 'System (Free Trial)'
+  });
+  localStorage.setItem('subscriptions', JSON.stringify(subs));
+  
+  logAction('Admin Account Created', `Username: ${user} — 7-Day Free Trial Activated. Expires: ${trialExpiry.toLocaleDateString()}`);
+  
+  alert(`✅ Admin account created!\n7-Day Free Trial Activated.\nExpires: ${trialExpiry.toLocaleDateString()}`);
   document.getElementById('new-admin-user').value = '';
   document.getElementById('new-admin-pass').value = '';
   loadAdminsList();
+  loadOverview();
 };
+
 document.getElementById('change-admin-pass-btn').onclick = () => {
   const adminId = document.getElementById('admin-to-change').value;
   const newPass = document.getElementById('new-admin-pass-set').value.trim();
@@ -385,7 +447,7 @@ document.getElementById('change-admin-pass-btn').onclick = () => {
   admins[idx].password = newPass;
   localStorage.setItem('adminAccounts', JSON.stringify(admins));
   
-  logAction('Admin Password Changed', `Username: ${admins[idx].username}, changed by SP`);
+  logAction('Admin Password Changed', `Username: ${admins[idx].username} — changed by Service Provider`);
   
   alert('Password updated ✅');
   document.getElementById('new-admin-pass-set').value = '';
@@ -396,16 +458,18 @@ document.getElementById('change-admin-pass-btn').onclick = () => {
 document.getElementById('reset-all-btn').onclick = () => {
   document.getElementById('confirm-reset-modal').classList.remove('hidden');
 };
+
 document.getElementById('cancel-reset-btn').onclick = () => {
   document.getElementById('confirm-reset-modal').classList.add('hidden');
   document.getElementById('reset-confirm-text').value = '';
 };
+
 document.getElementById('confirm-reset-btn').onclick = () => {
   if (document.getElementById('reset-confirm-text').value !== 'RESET') {
     return alert('Type RESET exactly to confirm.');
   }
   
-  if (!confirm('FINAL CONFIRM — Delete ALL data?')) return;
+  if (!confirm('FINAL CONFIRM — Delete ALL data? This cannot be undone!')) return;
   
   localStorage.clear();
   logAction('SYSTEM FULL RESET', 'All data cleared by Service Provider');
@@ -423,6 +487,7 @@ function populateMsgStores() {
     '<option value="">— All Stores / All Users —</option>' +
     stores.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
 }
+
 document.getElementById('send-sp-msg').onclick = () => {
   const text = document.getElementById('sp-msg-textarea').value.trim();
   const targetStore = document.getElementById('msg-target-store').value || null;
@@ -445,6 +510,7 @@ document.getElementById('send-sp-msg').onclick = () => {
   document.getElementById('sp-msg-textarea').value = '';
   loadMsgLog();
 };
+
 function loadMsgLog() {
   const msgs = JSON.parse(localStorage.getItem('spMessages') || '[]').reverse();
   document.getElementById('sp-msg-log').innerHTML = msgs.length === 0
@@ -462,18 +528,21 @@ function loadMsgLog() {
 
 // ========== DIRECT CHAT ==========
 let CHAT_PARTNER = null;
+
 function populateChatAdmins() {
   const admins = JSON.parse(localStorage.getItem('adminAccounts') || '[]');
   document.getElementById('chat-partner').innerHTML =
     '<option value="">— Select Admin —</option>' +
     admins.map(a => `<option value="${a.id}">${a.username}</option>`).join('');
 }
+
 document.getElementById('chat-partner').onchange = e => {
   CHAT_PARTNER = e.target.value || null;
   document.getElementById('chat-box').style.display = CHAT_PARTNER ? 'block' : 'none';
   document.getElementById('chat-input-area').style.display = CHAT_PARTNER ? 'flex' : 'none';
   if (CHAT_PARTNER) loadChatMessages();
 };
+
 function loadChatMessages() {
   if (!CHAT_PARTNER) return;
   const convKey = `chat_sp_admin_${CHAT_PARTNER}`;
@@ -490,12 +559,15 @@ function loadChatMessages() {
       `).join('');
   box.scrollTop = box.scrollHeight;
 }
+
 document.getElementById('send-chat').onclick = () => {
   if (!CHAT_PARTNER) return;
   const text = document.getElementById('chat-text').value.trim();
   if (!text) return;
   
   const convKey = `chat_sp_admin_${CHAT_PARTNER}`;
+  const partnerKey = `chat_admin_sp`;
+  
   const messages = JSON.parse(localStorage.getItem(convKey) || '[]');
   messages.push({
     senderId: 'sp',
@@ -505,8 +577,6 @@ document.getElementById('send-chat').onclick = () => {
   });
   localStorage.setItem(convKey, JSON.stringify(messages));
   
-  // Mirror for Admin's view
-  const partnerKey = `chat_admin_sp`;
   const partnerMsgs = JSON.parse(localStorage.getItem(partnerKey) || '[]');
   partnerMsgs.push({
     senderId: 'sp',
@@ -531,6 +601,7 @@ function logAction(action, details='') {
   });
   localStorage.setItem('systemActivityLog', JSON.stringify(logs));
 }
+
 function loadSystemLogs() {
   const logs = JSON.parse(localStorage.getItem('systemActivityLog') || '[]').reverse();
   document.getElementById('full-log').innerHTML = logs.length === 0
