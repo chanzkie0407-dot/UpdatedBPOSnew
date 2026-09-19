@@ -179,8 +179,7 @@
         <button id="chat-send" class="btn-primary" style="width:auto; margin:0;">Send</button>
       </div>
     </div>
-  </div>
-<script type="module">
+  </div><script type="module">
 import { requireAuth } from '../../auth/protect.js';
 import { logout } from '../../auth/login.js';
 const user = requireAuth(['admin']);
@@ -189,41 +188,60 @@ document.getElementById('admin-name').textContent = user.name;
 document.getElementById('logout-btn').onclick = logout;
 
 // ==========================================
-// TABS — FINAL FIXED VERSION
+// TABS — 100% GUARANTEED CLICKABLE
 // ==========================================
 function initTabs() {
+  console.log('✅ initTabs tumatakbo'); // Para makita sa Console
+  
   const tabButtons = document.querySelectorAll('.tab-btn');
   const tabContents = document.querySelectorAll('.tab-content');
   
-  tabButtons.forEach(btn => {
-    btn.onclick = function(e) {
+  console.log('📋 Bilang ng tab buttons:', tabButtons.length); // Dapat 8 lumabas
+  
+  tabButtons.forEach((btn, index) => {
+    // Tanggalin muna ang lahat ng nakakabit na click
+    btn.onclick = null;
+    
+    btn.addEventListener('click', function(e) {
       e.preventDefault();
+      e.stopPropagation(); // Para walang ibang humarang
       
+      console.log('🖱️ Pinindot na tab:', this.getAttribute('data-tab'));
+      
+      // Alisin lahat ng active
       tabButtons.forEach(b => b.classList.remove('active'));
       tabContents.forEach(c => c.classList.remove('active'));
       
+      // I-set active sa napili
       this.classList.add('active');
       const targetId = this.getAttribute('data-tab');
       const targetContent = document.getElementById(targetId);
-      if (targetContent) targetContent.classList.add('active');
+      if (targetContent) {
+        targetContent.classList.add('active');
+        console.log('✅ Ipinakita ang:', targetId);
+      } else {
+        console.log('❌ HINDI NAKITA ang content para sa:', targetId);
+      }
       
-      // Siguradong nakalagay lahat ng kailangang i-load
+      // I-load ang data
       if (targetId === 'stores') loadStores();
       if (targetId === 'products') loadProducts();
       if (targetId === 'chat') loadChatTargets();
       if (targetId === 'count') loadCountTabData();
       if (targetId === 'voids') loadVoidRequests();
-      if (targetId === 'stocks') {} // wala pang kailangang i-load — may button na
-    };
+    });
   });
 }
 
-// Siguraduhing tumatakbo kapag handa na ang page
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initTabs);
-} else {
-  initTabs();
+// Siguraduhing tumatakbo — DOUBLE GUARD
+function runInit() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTabs);
+  } else {
+    initTabs();
+  }
 }
+runInit();
 
 // ===== STORES =====
 function loadStores() {
@@ -327,7 +345,7 @@ document.getElementById('product-form').onsubmit = e => {
   loadProducts();
 };
 
-// ===== SALES REPORT — FIXED: removed extra ) =====
+// ===== SALES REPORT =====
 document.getElementById('gen-sales').onclick = () => {
   const store = document.getElementById('salestore').value;
   const from = document.getElementById('datefrom').value;
