@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login — BPOS</title>
- <link rel="stylesheet" href="/assets/css/style.css">
+  <link rel="stylesheet" href="/assets/css/style.css">
   <style>
     .login-container{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);}
     .login-box{background:#fff;padding:30px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.15);width:100%;max-width:400px;}
@@ -16,7 +16,7 @@
     .btn-primary{width:100%;padding:12px;background:#667eea;color:#fff;border:none;border-radius:6px;font-size:1rem;font-weight:600;cursor:pointer;transition:background 0.2s;}
     .btn-primary:hover{background:#5568d3;}
     .hint-text{text-align:center;margin-top:15px;font-size:0.85rem;color:#718096;}
-    .online-indicator{position:fixed;top:10px;right:10px;padding:6px 12px;border-radius:20px;font-weight:bold;font-size:0.85rem;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.1);}
+    .online-indicator{position:fixed;top:10px;right:10px;padding:6px 12px;border-radius:20px;font-weight:bold;font-size:0.85rem;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.1);z-index:999;}
     .online-indicator.online{color:#28a745;}
     .online-indicator.offline{color:#dc3545;}
   </style>
@@ -42,37 +42,37 @@
         </div>
         <button type="submit" class="btn-primary">Log In</button>
       </form>
-            <p class="hint-text">
+      <p class="hint-text">
         Cashier accounts created by Admin
       </p>
     </div>
   </div>
 
-<script type="module" src="login.js"></script>
-<script>
+<script type="module">
   import { verifyLogin, setLoggedInUser } from './login.js';
 
-document.getElementById('login-form').addEventListener('submit', async e => {
-  e.preventDefault();
-  const role = document.getElementById('role').value;
-  const password = document.getElementById('password').value.trim();
-  
-  if (!role || !password) return alert('Fill all fields.');
-  
-  const result = await verifyLogin(role, password);
-  
-  if (result.success) {
-    setLoggedInUser(result.user);
-    const redirect = {
-      admin: '../pages/admin/dashboard.html',
-      cashier: '../pages/cashier/dashboard.html',
-      service_provider: '../pages/sp/dashboard.html'
-    }[role];
-    window.location.href = redirect;
-  } else {
-    alert(result.message || 'Login failed.');
-  }
-});
+  document.getElementById('login-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const role = document.getElementById('role').value;
+    const password = document.getElementById('password').value.trim();
+    
+    if (!role || !password) return alert('Fill all fields.');
+    
+    const result = await verifyLogin(role, password);
+    
+    if (result.success) {
+      setLoggedInUser(result.user);
+      const redirect = {
+        admin: '../pages/admin/dashboard.html',
+        cashier: '../pages/cashier/dashboard.html',
+        service_provider: '../pages/sp/dashboard.html'
+      }[role];
+      window.location.href = redirect;
+    } else {
+      alert(result.message || 'Login failed.');
+    }
+  });
+
   // Online status
   const indicator = document.getElementById('online-indicator');
   function updateStatus(){
