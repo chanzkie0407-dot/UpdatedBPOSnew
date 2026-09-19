@@ -36,739 +36,11 @@
   </style>
 </head>
 <body>
-  <div id="online-indicator" class="online-indicator">● Checking...</div>
-  <div class="container">
-    <div class="header">
-      <div>
-        <h1>⚙️ Admin / Owner Dashboard</h1>
-        <p id="user-info">Loading...</p>
-      </div>
-      <button id="logout-btn" class="btn-logout">Log Out</button>
-    </div>
-    <!-- Subscription Status -->
-    <div id="sub-alert" class="subscription-alert hidden">
-      <strong>⚠️ Subscription Notice:</strong>
-      <span id="sub-status-text"></span>
-    </div>
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="stores">Stores</button>
-      <button class="tab-btn" data-tab="cashiers">Cashiers</button>
-      <button class="tab-btn" data-tab="products">Products</button>
-      <button class="tab-btn" data-tab="stocks">Stock Overview</button>
-      <button class="tab-btn" data-tab="sales">Sales Reports</button>
-      <button class="tab-btn" data-tab="requests">Void/StockOut Requests</button>
-      <button class="tab-btn" data-tab="count">Stock Count Requests</button>
-      <button class="tab-btn" data-tab="chat">Chat</button>
-      <button class="tab-btn" data-tab="settings">Settings</button>
-    </div>
 
-    <!-- ========== STORES TAB ========== -->
-    <div id="stores" class="tab-content active">
-      <h3>Manage Stores (1–20)</h3>
-      <div class="form-card">
-        <h4>Add New Store</h4>
-        <input type="text" id="store-code" placeholder="Store Code (Auto if blank)" class="form-input">
-        <input type="text" id="store-name" placeholder="Store Name *" class="form-input" required>
-        <input type="text" id="store-location" placeholder="Location (Optional)" class="form-input">
-        <button id="add-store-btn" class="btn-primary">Add Store</button>
-      </div>
-      <h4>Store List</h4>
-      <div id="store-list"><p>No stores added yet.</p></div>
-    </div>
-
-    <!-- ========== CASHIERS TAB ========== -->
-    <div id="cashiers" class="tab-content">
-      <h3>Manage Cashiers (1–20)</h3>
-      <div class="form-card">
-        <h4>Add New Cashier</h4>
-        <input type="text" id="cashier-fname" placeholder="First Name *" class="form-input" required>
-        <input type="text" id="cashier-lname" placeholder="Last Name (Optional)" class="form-input">
-        <input type="password" id="cashier-pwd" placeholder="Password (4 digits) *" class="form-input" maxlength="4" required>
-        <select id="cashier-store" class="form-input">
-          <option value="">— Assign to Store —</option>
-        </select>
-        <button id="add-cashier-btn" class="btn-primary">Create Cashier</button>
-      </div>
-      <div class="form-card" style="margin-top:15px;">
-        <h4>Change Cashier Password</h4>
-        <select id="cashier-to-update" class="form-input">
-          <option value="">— Select Cashier —</option>
-        </select>
-        <input type="password" id="new-cashier-pwd" placeholder="New Password (4 digits)" class="form-input" maxlength="4">
-        <button id="update-pwd-btn" class="btn-primary">Update Password</button>
-        <p class="password-log">Changes are logged with date & time.</p>
-      </div>
-      <h4>Cashier List</h4>
-      <div id="cashier-list"><p>No cashiers added yet.</p></div>
-    </div>
-
-    <!-- ========== PRODUCTS TAB ========== -->
-    <div id="products" class="tab-content">
-      <h3>Manage Products</h3>
-      <div class="form-card">
-        <select id="prod-store" class="form-input">
-          <option value="">— Select Store —</option>
-        </select>
-        <input type="text" id="prod-name" placeholder="Product Name *" class="form-input" required>
-        <input type="number" id="prod-qty" placeholder="Initial Quantity *" class="form-input" min="1" required>
-        <input type="number" id="prod-price" placeholder="Selling Price *" class="form-input" step="0.01" required>
-        <input type="text" id="prod-barcode" placeholder="Barcode / SKU (Auto if blank)" class="form-input">
-        <button id="add-prod-btn" class="btn-primary">Add Product</button>
-      </div>
-      <h4>Product List</h4>
-      <select id="prod-filter-store" class="form-input" style="max-width:250px;">
-        <option value="">— All Stores —</option>
-      </select>
-      <div id="prod-list"><p>No products added yet.</p></div>
-    </div>
-
-    <!-- ========== STOCK OVERVIEW ========== -->
-    <div id="stocks" class="tab-content">
-      <h3>Stock Overview</h3>
-      <p class="stock-hidden">This section is visible to Admin only — Cashier cannot view.</p>
-      <select id="stock-store-filter" class="form-input" style="max-width:250px;">
-        <option value="">— Select Store —</option>
-      </select>
-      <div id="stock-list"></div>
-    </div>
-
-    <!-- ========== SALES REPORTS ========== -->
-    <div id="sales" class="tab-content">
-      <h3>Sales Overview & Reports</h3>
-      <select id="report-store" class="form-input" style="max-width:250px;">
-        <option value="">— Select Store —</option>
-      </select>
-      <input type="date" id="report-from" class="form-input" style="max-width:150px;">
-      <input type="date" id="report-to" class="form-input" style="max-width:150px;">
-      <button id="gen-report-btn" class="btn-primary">Generate Report</button>
-      <div id="sales-report" style="margin-top:20px;"></div>
-    </div>
-
-    <!-- ========== REQUESTS TAB ========== -->
-    <div id="requests" class="tab-content">
-      <h3>Void & Stock Out Requests</h3>
-      <div id="pending-reqs"></div>
-      <h4>Request History</h4>
-      <div id="all-reqs"></div>
-    </div>
-
-    <!-- ========== STOCK COUNT REQUESTS ========== -->
-    <div id="count" class="tab-content">
-      <h3>Request Stock Count</h3>
-      <div class="form-card">
-        <select id="count-req-store" class="form-input">
-          <option value="">— Select Store —</option>
-        </select>
-        <label style="margin-top:10px;display:block;">Select Products to Count:</label>
-        <div id="count-prod-checklist" style="max-height:250px;overflow-y:auto;border:1px solid #ddd;padding:10px;margin:5px 0;"></div>
-        <button id="send-count-req-btn" class="btn-primary" style="margin-top:10px;">Send Count Request to Cashier</button>
-      </div>
-      <h4>Count Results</h4>
-      <div id="count-results"></div>
-    </div>
-
-    <!-- ========== CHAT TAB ========== -->
-    <div id="chat" class="tab-content">
-      <h3>Private Chat</h3>
-      <select id="chat-partner" class="form-input">
-        <option value="">— Select Who to Chat With —</option>
-        <option value="cashier">Cashier (Select below)</option>
-        <option value="sp">Service Provider</option>
-      </select>
-      <select id="chat-cashier-select" class="form-input hidden">
-        <option value="">— Choose Cashier —</option>
-      </select>
-      <div id="chat-box" class="chat-box" style="margin-top:10px;display:none;"></div>
-      <div style="display:flex;gap:8px;margin-top:10px;display:none;" id="chat-input-area">
-        <input type="text" id="chat-text" placeholder="Type message..." class="form-input" style="flex:1;">
-        <button id="send-chat-btn" class="btn-primary" style="width:auto;">Send</button>
-      </div>
-      <p style="font-size:0.8rem;color:#666;margin-top:8px;">💬 Conversations are private — Cashier ↔ Admin not visible to SP; Admin ↔ SP not visible to Cashier.</p>
-    </div>
-
-    <!-- ========== SETTINGS TAB ========== -->
-    <div id="settings" class="tab-content">
-      <h3>Account Settings</h3>
-      <div class="form-card">
-        <h4>Change Admin Password</h4>
-        <p style="font-size:0.85rem;color:#666;">⚠️ Only Service Provider can change your Admin password. Contact SP for assistance.</p>
-        <input type="password" placeholder="Current Password (SP only)" class="form-input" disabled>
-        <input type="password" placeholder="New Password" class="form-input" disabled>
-        <button class="btn-secondary" disabled>Change — SP Only</button>
-      </div>
-      <div class="form-card">
-        <h4>System Data</h4>
-        <p>Full system reset button is available to Service Provider only.</p>
-      </div>
-    </div>
-  </div>
-
-<script type="module">
-import { requireAuth } from '../../auth/protect.js';
-import { logout } from '../../auth/login.js';
-const user = requireAuth(['admin']);
-if (!user) window.location.href = '../../auth/login.html';
-const CURRENT_USER = user;
-
-// ONLINE STATUS
-const indicator = document.getElementById('online-indicator');
-function updateOnlineStatus() {
-  const isOnline = navigator.onLine;
-  indicator.className = `online-indicator ${isOnline ? 'online' : 'offline'}`;
-  indicator.textContent = isOnline ? '● Online' : '● Offline';
-}
-window.addEventListener('online', updateOnlineStatus);
-window.addEventListener('offline', updateOnlineStatus);
-updateOnlineStatus();
-
-// SUBSCRIPTION STATUS WITH END DATE
-function checkSubscription() {
-  const sub = JSON.parse(localStorage.getItem('subscription') || '{}');
-  const alertBox = document.getElementById('sub-alert');
-  const textSpan = document.getElementById('sub-status-text');
-  
-  if (!sub.startDate) {
-    alertBox.classList.remove('hidden');
-    alertBox.classList.remove('expired');
-    textSpan.textContent = 'Free Trial Active — Start Date Not Set. Ends 7 days after first use.';
-    return;
-  }
-  
-  const start = new Date(sub.startDate);
-  const expiry = new Date(start.getTime() + 7 * 86400000);
-  const now = new Date();
-  const daysLeft = Math.ceil((expiry - now) / 86400000);
-  
-  alertBox.classList.remove('hidden');
-  
-  if (now > expiry) {
-    alertBox.classList.add('expired');
-    textSpan.textContent = `🔴 EXPIRED — Subscription ended ${expiry.toLocaleDateString()}. Please contact Service Provider to renew.`;
-  } else if (daysLeft <= 2) {
-    alertBox.classList.remove('expired');
-    textSpan.textContent = `⚠️ Expiring SOON — Expires: ${expiry.toLocaleDateString()} (${daysLeft} day(s) remaining). Renew now to avoid service interruption.`;
-  } else {
-    alertBox.classList.remove('expired');
-    textSpan.textContent = `✅ Active — Subscription Expires: ${expiry.toLocaleDateString()} (${daysLeft} days remaining)`;
-  }
-}
-checkSubscription();
-
-// INIT
-document.getElementById('user-info').textContent = `${CURRENT_USER.name || 'Admin'} — Admin / Owner`;
-
-// TABS
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.onclick = () => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById(btn.dataset.tab).classList.add('active');
-    if (btn.dataset.tab === 'stocks') loadStockOverview();
-    if (btn.dataset.tab === 'count') loadCountChecklist();
-  };
-});
-
-// ========== STORES ==========
-function renderStores() {
-  const stores = JSON.parse(localStorage.getItem('stores') || '[]');
-  if (!stores.length) {
-    document.getElementById('store-list').innerHTML = '<p>No stores added. Add your first store above.</p>';
-    return;
-  }
-  document.getElementById('store-list').innerHTML = stores.map(s => `
-    <div class="item-card">
-      <strong>${s.code || '#' + s.id.slice(-4)}</strong> — ${s.name}<br>
-      ${s.location ? `<small>📍 ${s.location}</small><br>` : ''}
-      Created: ${new Date(s.createdAt).toLocaleDateString()}<br>
-      <button class="btn-secondary delete-store-btn" data-id="${s.id}" style="margin-top:8px;background:#dc3545;color:#fff;border:none;cursor:pointer;">Delete Store</button>
-    </div>
-  `).join('');
-  
-  const opts = '<option value="">— Select —</option>' +
-    stores.map(s => `<option value="${s.id}">${s.code || ''} ${s.name}</option>`).join('');
-  document.getElementById('cashier-store').innerHTML = opts;
-  document.getElementById('prod-store').innerHTML = opts;
-  document.getElementById('prod-filter-store').innerHTML = opts;
-  document.getElementById('stock-store-filter').innerHTML = opts;
-  document.getElementById('report-store').innerHTML = opts;
-  document.getElementById('count-req-store').innerHTML = opts;
-}
-
-document.getElementById('add-store-btn').onclick = () => {
-  const name = document.getElementById('store-name').value.trim();
-  if (!name) return alert('Enter store name.');
-  const stores = JSON.parse(localStorage.getItem('stores') || '[]');
-  if (stores.length >= 20) return alert('Maximum 20 stores allowed.');
-  const store = {
-    id: 'store-' + Date.now(),
-    code: document.getElementById('store-code').value.trim() || '',
-    name,
-    location: document.getElementById('store-location').value.trim() || '',
-    createdAt: new Date().toISOString()
-  };
-  stores.push(store);
-  localStorage.setItem('stores', JSON.stringify(stores));
-  alert('Store added ✅');
-  document.getElementById('store-name').value = '';
-  document.getElementById('store-code').value = '';
-  document.getElementById('store-location').value = '';
-  renderStores();
-};
-
-// ========== CASHIERS ==========
-function renderCashiers() {
-  const cashiers = JSON.parse(localStorage.getItem('cashiers') || '[]');
-  const stores = JSON.parse(localStorage.getItem('stores') || '[]');
-  if (!cashiers.length) {
-    document.getElementById('cashier-list').innerHTML = '<p>No cashiers added yet.</p>';
-    return;
-  }
-  document.getElementById('cashier-list').innerHTML = cashiers.map(c => {
-    const store = stores.find(s => s.id === c.storeId);
-    return `
-      <div class="item-card">
-        <strong>${c.fname} ${c.lname || ''}</strong><br>
-        Store: ${store ? store.name : 'Not Assigned'}<br>
-        Password: <code>${'•'.repeat(c.password.length)}</code>
-        ${c.lastPwdChange ? `<br><small>Last changed: ${new Date(c.lastPwdChange).toLocaleString()}</small>` : ''}<br>
-        <button class="btn-secondary delete-cashier-btn" data-id="${c.id}" style="margin-top:8px;background:#dc3545;color:#fff;border:none;cursor:pointer;">Remove Cashier</button>
-      </div>
-    `;
-  }).join('');
-  
-  document.getElementById('cashier-to-update').innerHTML =
-    '<option value="">— Select —</option>' +
-    cashiers.map(c => `<option value="${c.id}">${c.fname} ${c.lname || ''}</option>`).join('');
-  document.getElementById('chat-cashier-select').innerHTML =
-    '<option value="">— Select Cashier —</option>' +
-    cashiers.map(c => `<option value="${c.id}">${c.fname} ${c.lname || ''}</option>`).join('');
-}
-
-document.getElementById('add-cashier-btn').onclick = () => {
-  const fname = document.getElementById('cashier-fname').value.trim();
-  const lname = document.getElementById('cashier-lname').value.trim();
-  const pwd = document.getElementById('cashier-pwd').value.trim();
-  const storeId = document.getElementById('cashier-store').value;
-  if (!fname || !pwd || pwd.length !== 4) return alert('Fill name and 4-digit password.');
-  const cashiers = JSON.parse(localStorage.getItem('cashiers') || '[]');
-  if (cashiers.length >= 20) return alert('Maximum 20 cashiers allowed.');
-  const cashier = {
-    id: 'cashier-' + Date.now(),
-    fname,
-    lname,
-    name: `${fname} ${lname}`.trim(),
-    password: pwd,
-    storeId,
-    createdAt: new Date().toISOString()
-  };
-  cashiers.push(cashier);
-  localStorage.setItem('cashiers', JSON.stringify(cashiers));
-  alert('Cashier created ✅ Can now log in.');
-  document.getElementById('cashier-fname').value = '';
-  document.getElementById('cashier-lname').value = '';
-  document.getElementById('cashier-pwd').value = '';
-  renderCashiers();
-};
-
-document.getElementById('update-pwd-btn').onclick = () => {
-  const id = document.getElementById('cashier-to-update').value;
-  const newPwd = document.getElementById('new-cashier-pwd').value.trim();
-  if (!id || newPwd.length !== 4) return alert('Select cashier and enter 4-digit password.');
-  const cashiers = JSON.parse(localStorage.getItem('cashiers') || '[]');
-  const idx = cashiers.findIndex(c => c.id === id);
-  if (idx < 0) return alert('Cashier not found.');
-  cashiers[idx].prevPassword = cashiers[idx].password;
-  cashiers[idx].password = newPwd;
-  cashiers[idx].lastPwdChange = new Date().toISOString();
-  localStorage.setItem('cashiers', JSON.stringify(cashiers));
-  alert('Password updated ✅');
-  document.getElementById('new-cashier-pwd').value = '';
-  renderCashiers();
-};
-
-// ========== PRODUCTS ==========
-function renderProducts(filterStore=null) {
-  let prods = JSON.parse(localStorage.getItem('products') || '[]');
-  if (filterStore) prods = prods.filter(p => p.storeId === filterStore);
-  document.getElementById('prod-list').innerHTML = prods.length === 0
-    ? '<p>No products added.</p>'
-    : prods.map(p => `
-        <div class="item-card">
-          <strong>${p.name}</strong><br>
-          Price: ₱${p.price.toFixed(2)} | Stock: ${p.stock || 0}<br>
-          <small>Barcode: ${p.barcode || 'Auto-generated'}</small><br>
-          <button class="btn-secondary delete-product-btn" data-id="${p.id}" style="margin-top:8px;background:#dc3545;color:#fff;border:none;cursor:pointer;">Delete Product</button>
-        </div>
-      `).join('');
-}
-
-document.getElementById('add-prod-btn').onclick = () => {
-  const storeId = document.getElementById('prod-store').value;
-  const name = document.getElementById('prod-name').value.trim();
-  const qty = parseInt(document.getElementById('prod-qty').value);
-  const price = parseFloat(document.getElementById('prod-price').value);
-  let barcode = document.getElementById('prod-barcode').value.trim();
-  if (!storeId || !name || isNaN(qty) || isNaN(price)) return alert('Fill all required fields.');
-  if (!barcode) barcode = 'SKU-' + Date.now();
-  const prods = JSON.parse(localStorage.getItem('products') || '[]');
-  prods.push({
-    id: 'prod-' + Date.now(),
-    storeId,
-    name,
-    stock: qty,
-    price,
-    barcode,
-    createdAt: new Date().toISOString()
-  });
-  localStorage.setItem('products', JSON.stringify(prods));
-  alert('Product added ✅');
-  document.getElementById('prod-name').value = '';
-  document.getElementById('prod-qty').value = '';
-  document.getElementById('prod-price').value = '';
-  document.getElementById('prod-barcode').value = '';
-  renderProducts();
-};
-
-document.getElementById('prod-filter-store').onchange = e => {
-  renderProducts(e.target.value || null);
-};
-
-// ========== DELETE FUNCTIONS ==========
-document.addEventListener('click', e => {
-  // DELETE STORE
-  if (e.target.classList.contains('delete-store-btn')) {
-    if (!confirm('⚠️ Delete this store? All products & cashiers linked to it will also be removed. This cannot be undone!')) return;
-    const storeId = e.target.dataset.id;
-    
-    let stores = JSON.parse(localStorage.getItem('stores') || '[]');
-    stores = stores.filter(s => s.id !== storeId);
-    localStorage.setItem('stores', JSON.stringify(stores));
-    
-    let products = JSON.parse(localStorage.getItem('products') || '[]');
-    products = products.filter(p => p.storeId !== storeId);
-    localStorage.setItem('products', JSON.stringify(products));
-    
-    let cashiers = JSON.parse(localStorage.getItem('cashiers') || '[]');
-    cashiers = cashiers.filter(c => c.storeId !== storeId);
-    localStorage.setItem('cashiers', JSON.stringify(cashiers));
-    
-    alert('✅ Store and related data deleted');
-    renderStores();
-    renderProducts();
-    renderCashiers();
-  }
-  
-  // DELETE CASHIER
-  if (e.target.classList.contains('delete-cashier-btn')) {
-    if (!confirm('Remove this cashier? They will no longer be able to log in.')) return;
-    const cid = e.target.dataset.id;
-    
-    let cashiers = JSON.parse(localStorage.getItem('cashiers') || '[]');
-    cashiers = cashiers.filter(c => c.id !== cid);
-    localStorage.setItem('cashiers', JSON.stringify(cashiers));
-    
-    alert('✅ Cashier removed');
-    renderCashiers();
-  }
-  
-  // DELETE PRODUCT
-  if (e.target.classList.contains('delete-product-btn')) {
-    if (!confirm('Delete this product? Stock & history may be affected.')) return;
-    const pid = e.target.dataset.id;
-    
-    let products = JSON.parse(localStorage.getItem('products') || '[]');
-    products = products.filter(p => p.id !== pid);
-    localStorage.setItem('products', JSON.stringify(products));
-    
-    alert('✅ Product deleted');
-    renderProducts();
-  }
-});
-
-// ========== STOCK OVERVIEW ==========
-function loadStockOverview() {
-  const storeId = document.getElementById('stock-store-filter').value;
-  let prods = JSON.parse(localStorage.getItem('products') || '[]');
-  const stores = JSON.parse(localStorage.getItem('stores') || '[]');
-  if (storeId) prods = prods.filter(p => p.storeId === storeId);
-  document.getElementById('stock-list').innerHTML = prods.length === 0
-    ? '<p>No products found.</p>'
-    : `<table>
-        <tr><th>Product</th><th>Store</th><th>Price</th><th>Current Stock</th></tr>
-        ${prods.map(p => {
-          const s = stores.find(st => st.id === p.storeId);
-          return `<tr>
-            <td>${p.name}</td>
-            <td>${s ? s.name : '—'}</td>
-            <td>₱${p.price.toFixed(2)}</td>
-            <td><strong>${p.stock || 0}</strong></td>
-          </tr>`;
-        }).join('')}
-      </table>`;
-}
-document.getElementById('stock-store-filter').onchange = loadStockOverview;
-
-// ========== SALES REPORTS ==========
-document.getElementById('gen-report-btn').onclick = () => {
-  const storeId = document.getElementById('report-store').value;
-  const from = document.getElementById('report-from').value;
-  const to = document.getElementById('report-to').value;
-  let txs = JSON.parse(localStorage.getItem('transactions') || '[]');
-  if (storeId) txs = txs.filter(t => t.storeId === storeId);
-  if (from) txs = txs.filter(t => new Date(t.timestamp) >= new Date(from));
-  if (to) txs = txs.filter(t => new Date(t.timestamp) <= new Date(to + 'T23:59:59'));
-  
-  const totalCash = txs.filter(t => t.paymentMethod === 'cash' || t.paymentMethod === 'split').reduce((s,t)=>s+(t.cashAmount||0),0);
-  const totalGcash = txs.filter(t => t.paymentMethod === 'gcash' || t.paymentMethod === 'split').reduce((s,t)=>s+(t.gcashAmount||0),0);
-  const grandTotal = txs.reduce((s,t)=>s+t.total,0);
-  
-  document.getElementById('sales-report').innerHTML = `
-    <div class="item-card">
-      <h4>Report Summary</h4>
-      <p>Transactions: ${txs.length}</p>
-      <p>Total Sales: <strong>₱${grandTotal.toFixed(2)}</strong></p>
-      <p>Cash: ₱${totalCash.toFixed(2)}</p>
-      <p>GCash: ₱${totalGcash.toFixed(2)}</p>
-    </div>
-    <h4>Transaction Details</h4>
-    ${txs.length === 0 ? '<p>No transactions for selected period.</p>' : txs.map(t => `
-      <div class="item-card">
-        <strong>${new Date(t.timestamp).toLocaleString()}</strong> — ${t.cashierName}<br>
-        Items: ${t.items.length} | Total: ₱${t.total.toFixed(2)} | ${t.paymentMethod.toUpperCase()}
-      </div>
-    `).join('')}
-  `;
-};
-
-// ========== REQUESTS HANDLING ==========
-function loadRequests() {
-  const reqs = JSON.parse(localStorage.getItem('requests') || '[]');
-  const stores = JSON.parse(localStorage.getItem('stores') || '[]');
-  const cashiers = JSON.parse(localStorage.getItem('cashiers') || '[]');
-  const pending = reqs.filter(r => r.status === 'pending');
-  const all = reqs.slice(0,30);
-  
-  document.getElementById('pending-reqs').innerHTML = pending.length === 0
-    ? '<p>No pending requests.</p>'
-    : pending.map(r => {
-        const c = cashiers.find(x => x.id === r.cashierId);
-        const s = stores.find(x => x.id === r.storeId);
-        return `
-          <div class="item-card">
-            <strong>${r.type === 'void' ? '🔴 VOID REQUEST' : '📦 STOCK OUT'}</strong>
-            <span class="badge pending">Pending</span><br>
-            From: ${c ? c.name : 'Unknown Cashier'} @ ${s ? s.name : 'Unknown Store'}<br>
-            ${r.type === 'void' 
-              ? `Void Ticket: ${r.voidTxId}<br>Correct Ticket: ${r.correctTxId || 'None'}` 
-              : `Product: ${r.productId}<br>Qty: ${r.qty}`}<br>
-            Reason: ${r.reason}<br>
-            <button data-id="${r.id}" data-status="approved" class="approve-btn btn-primary btn-sm">✓ Approve</button>
-            <button data-id="${r.id}" data-status="rejected" class="reject-btn btn-secondary btn-sm" style="margin-left:5px;">✗ Reject</button>
-          </div>
-        `;
-      }).join('');
-  
-  document.getElementById('all-reqs').innerHTML = all.length === 0
-    ? '<p>No requests yet.</p>'
-    : all.map(r => {
-        const c = cashiers.find(x => x.id === r.cashierId);
-        return `
-          <div class="item-card">
-            <strong>${r.type === 'void' ? 'VOID' : 'STOCK OUT'}</strong>
-            <span class="badge ${r.status}">${r.status}</span><br>
-            ${c ? c.name : 'Unknown'} — ${r.reason}<br>
-            <small>${new Date(r.createdAt).toLocaleString()}</small>
-          </div>
-        `;
-      }).join('');
-  
-  document.querySelectorAll('.approve-btn, .reject-btn').forEach(btn => {
-    btn.onclick = () => {
-      const id = btn.dataset.id;
-      const newStatus = btn.dataset.status;
-      const reqs = JSON.parse(localStorage.getItem('requests') || '[]');
-      const idx = reqs.findIndex(r => r.id === id);
-      if (idx >= 0) {
-        reqs[idx].status = newStatus;
-        reqs[idx].reviewedAt = new Date().toISOString();
-        reqs[idx].reviewedBy = CURRENT_USER.id;
-        if (reqs[idx].type === 'stockout' && newStatus === 'approved') {
-          const prods = JSON.parse(localStorage.getItem('products') || '[]');
-          const pIdx = prods.findIndex(p => p.id === reqs[idx].productId && p.storeId === reqs[idx].storeId);
-          if (pIdx >= 0) prods[pIdx].stock = Math.max(0, (prods[pIdx].stock || 0) - reqs[idx].qty);
-          localStorage.setItem('products', JSON.stringify(prods));
-        }
-        localStorage.setItem('requests', JSON.stringify(reqs));
-        alert(`Request ${newStatus} ✅`);
-        loadRequests();
-      }
-    };
-  });
-}
-
-// ========== STOCK COUNT REQUESTS ==========
-function loadCountChecklist() {
-  const storeId = document.getElementById('count-req-store').value;
-  if (!storeId) {
-    document.getElementById('count-prod-checklist').innerHTML = '<p style="color:#888;">Select store first to see products.</p>';
-    return;
-  }
-  const prods = JSON.parse(localStorage.getItem('products') || '[]').filter(p => p.storeId === storeId);
-  document.getElementById('count-prod-checklist').innerHTML = `
-    <label style="display:block;margin-bottom:8px;">
-      <input type="checkbox" id="count-all"> <strong>Select All Products</strong>
-    </label>
-    ${prods.map(p => `
-      <label style="display:block;">
-        <input type="checkbox" class="prod-check" value="${p.id}">
-        ${p.name} (Sys: ${p.stock || 0})
-      </label>
-    `).join('')}
-  `;
-  document.getElementById('count-all').onchange = e => {
-    document.querySelectorAll('.prod-check').forEach(cb => cb.checked = e.target.checked);
-  };
-}
-document.getElementById('count-req-store').onchange = loadCountChecklist;
-
-document.getElementById('send-count-req-btn').onclick = () => {
-  const storeId = document.getElementById('count-req-store').value;
-  if (!storeId) return alert('Select store.');
-  const selected = Array.from(document.querySelectorAll('.prod-check:checked')).map(cb => cb.value);
-  const req = {
-    id: 'count-' + Date.now(),
-    storeId,
-    productIds: selected,
-    status: 'pending',
-    requestedAt: new Date().toISOString(),
-    requestedBy: CURRENT_USER.id
-  };
-  const counts = JSON.parse(localStorage.getItem('countRequests') || '[]');
-  counts.unshift(req);
-  localStorage.setItem('countRequests', JSON.stringify(counts));
-  alert('Count request sent to cashier ✅');
-  loadCountResults();
-};
-
-function loadCountResults() {
-  const counts = JSON.parse(localStorage.getItem('countRequests') || '[]');
-  const prods = JSON.parse(localStorage.getItem('products') || '[]');
-  document.getElementById('count-results').innerHTML = counts.length === 0
-    ? '<p>No count requests sent.</p>'
-    : counts.map(c => {
-        const storeProds = prods.filter(p => p.storeId === c.storeId);
-        let resultHtml = '';
-        if (c.status === 'submitted' && c.results) {
-          resultHtml = c.results.map(r => {
-            const p = storeProds.find(x => x.id === r.productId);
-            const sysQty = p ? (p.stock || 0) : 'N/A';
-            const diff = r.actual - sysQty;
-            return `<div style="padding:4px 8px;border-bottom:1px solid #eee;">
-              ${p ? p.name : 'Unknown Product'}: System ${sysQty} vs Actual ${r.actual}
-              <strong style="color:${diff===0?'green':diff>0?'blue':'red'}">(${diff>=0?'+':''}${diff})</strong>
-            </div>`;
-          }).join('');
-        }
-        return `
-          <div class="item-card">
-            <strong>Request — ${c.status.toUpperCase()}</strong>
-            <span class="badge ${c.status==='pending'?'pending':'approved'}">${c.status}</span><br>
-            ${c.productIds.length === 0 ? 'Count ALL products' : c.productIds.length + ' product(s) selected'}<br>
-            Sent: ${new Date(c.requestedAt).toLocaleString()}
-            ${c.submittedAt ? `<br>Submitted: ${new Date(c.submittedAt).toLocaleString()}` : ''}
-            ${resultHtml ? `<div style="margin-top:8px;background:#f9f9f9;padding:8px;border-radius:4px;">${resultHtml}</div>` : ''}
-          </div>
-        `;
-      }).join('');
-}
-
-// ========== CHAT ==========
-let CHAT_TARGET = null;
-document.getElementById('chat-partner').onchange = e => {
-  const val = e.target.value;
-  document.getElementById('chat-cashier-select').classList.toggle('hidden', val !== 'cashier');
-  CHAT_TARGET = null;
-  document.getElementById('chat-box').style.display = 'none';
-  document.getElementById('chat-input-area').style.display = 'none';
-  if (val === 'sp') {
-    CHAT_TARGET = { type: 'sp', id: 'sp' };
-    loadChatMessages();
-  }
-};
-
-document.getElementById('chat-cashier-select').onchange = e => {
-  const id = e.target.value;
-  if (!id) return;
-  CHAT_TARGET = { type: 'cashier', id };
-  loadChatMessages();
-};
-
-function loadChatMessages() {
-  if (!CHAT_TARGET) return;
-  const convKey = CHAT_TARGET.type === 'sp'
-    ? 'chat_admin_sp'
-    : `chat_admin_cashier_${CHAT_TARGET.id}`;
-  const msgs = JSON.parse(localStorage.getItem(convKey) || '[]');
-  document.getElementById('chat-box').style.display = 'block';
-  document.getElementById('chat-input-area').style.display = 'flex';
-  document.getElementById('chat-box').innerHTML = msgs.length === 0
-    ? '<p style="color:#888;">No messages yet. Start the conversation.</p>'
-    : msgs.map(m => `
-        <div class="chat-msg ${m.senderId === CURRENT_USER.id ? 'sent' : 'received'}">
-          <strong>${m.senderName}:</strong> ${m.text}<br>
-          <small style="opacity:0.7;">${new Date(m.time).toLocaleTimeString()}</small>
-        </div>
-      `).join('');
-  document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
-}
-
-document.getElementById('send-chat-btn').onclick = () => {
-  if (!CHAT_TARGET) return alert('Select recipient first.');
-  const text = document.getElementById('chat-text').value.trim();
-  if (!text) return;
-  const convKey = CHAT_TARGET.type === 'sp'
-    ? 'chat_admin_sp'
-    : `chat_admin_cashier_${CHAT_TARGET.id}`;
-  const receiverKey = CHAT_TARGET.type === 'sp'
-    ? 'chat_sp_admin'
-    : `chat_cashier_admin`;
-  const msg = {
-    senderId: CURRENT_USER.id,
-    senderName: CURRENT_USER.name || 'Admin',
-    text,
-    time: new Date().toISOString()
-  };
-  const msgs = JSON.parse(localStorage.getItem(convKey) || '[]');
-  msgs.push(msg);
-  localStorage.setItem(convKey, JSON.stringify(msgs));
-  const receiverMsgs = JSON.parse(localStorage.getItem(receiverKey) || '[]');
-  receiverMsgs.push(msg);
-  localStorage.setItem(receiverKey, JSON.stringify(receiverMsgs));
-  document.getElementById('chat-text').value = '';
-  loadChatMessages();
-};
-
-// LOGOUT
-document.getElementById('logout-btn').onclick = () => {
-  if (confirm('Log out? All password fields will be cleared.')) {
-    document.querySelectorAll('input[type="password"]').forEach(el => el.value = '');
-    logout();
-  }
-};
-
-// ONLOAD
-renderStores();
-renderCashiers();
-renderProducts();
-loadRequests();
-loadCountResults();
-  <!-- ===== FIREBASE CONNECTION ===== -->
+<!-- ===== FIREBASE CONNECTION — NASA TAMANG Pwesto ===== -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-
 <script>
-// === ANG IYONG FIREBASE CONFIG — TAMA NA ITO ===
 const firebaseConfig = {
   apiKey: "AIzaSyAxuB4gacmWIf3U4Ic5TsOxSHCaynR0vhw",
   authDomain: "bpos-pos.firebaseapp.com",
@@ -778,12 +50,10 @@ const firebaseConfig = {
   appId: "1:1024558399693:web:156467653318829a32a984",
   measurementId: "G-RDK7FWX31C"
 };
-
-// Initialize Firebase
 const app = firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// === SYNC FUNCTIONS ===
+// Sync Functions
 async function fsSet(collection, docId, data) {
   try {
     await db.collection(collection).doc(docId).set({
@@ -824,6 +94,802 @@ async function migrateLocalToFirebase() {
   alert('✅ Lahat ng data ay nai-upload na sa Cloud!\nMakikita na sa lahat ng device.');
 }
 </script>
+
+  <div id="online-indicator" class="online-indicator">● Checking...</div>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>⚙️ Admin / Owner Dashboard</h1>
+        <p id="user-info">Loading...</p>
+      </div>
+      <button id="logout-btn" class="btn-logout">Log Out</button>
+    </div>
+    <div id="sub-alert" class="subscription-alert hidden">
+      <strong>⚠️ Subscription Notice:</strong>
+      <span id="sub-status-text"></span>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="stores">Stores</button>
+      <button class="tab-btn" data-tab="cashiers">Cashiers</button>
+      <button class="tab-btn" data-tab="products">Products</button>
+      <button class="tab-btn" data-tab="stocks">Stock Overview</button>
+      <button class="tab-btn" data-tab="sales">Sales Reports</button>
+      <button class="tab-btn" data-tab="requests">Void/StockOut Requests</button>
+      <button class="tab-btn" data-tab="count">Stock Count Requests</button>
+      <button class="tab-btn" data-tab="chat">Chat</button>
+      <button class="tab-btn" data-tab="settings">Settings</button>
+    </div>
+
+    <!-- STORES TAB -->
+    <div id="stores" class="tab-content active">
+      <h3>Manage Stores (1–20)</h3>
+      <div class="form-card">
+        <h4>Add New Store</h4>
+        <input type="text" id="store-code" placeholder="Store Code (Auto if blank)" class="form-input">
+        <input type="text" id="store-name" placeholder="Store Name *" class="form-input" required>
+        <input type="text" id="store-location" placeholder="Location (Optional)" class="form-input">
+        <button id="add-store-btn" class="btn-primary">Add Store</button>
+      </div>
+      <h4>Store List</h4>
+      <div id="store-list"><p>No stores added yet.</p></div>
+    </div>
+
+    <!-- CASHIERS TAB -->
+    <div id="cashiers" class="tab-content">
+      <h3>Manage Cashiers (1–20)</h3>
+      <div class="form-card">
+        <h4>Add New Cashier</h4>
+        <input type="text" id="cashier-fname" placeholder="First Name *" class="form-input" required>
+        <input type="text" id="cashier-lname" placeholder="Last Name (Optional)" class="form-input">
+        <input type="password" id="cashier-pwd" placeholder="Password (4 digits) *" class="form-input" maxlength="4" required>
+        <select id="cashier-store" class="form-input">
+          <option value="">— Assign to Store —</option>
+        </select>
+        <button id="add-cashier-btn" class="btn-primary">Create Cashier</button>
+      </div>
+      <div class="form-card" style="margin-top:15px;">
+        <h4>Change Cashier Password</h4>
+        <select id="cashier-to-update" class="form-input">
+          <option value="">— Select Cashier —</option>
+        </select>
+        <input type="password" id="new-cashier-pwd" placeholder="New Password (4 digits)" class="form-input" maxlength="4">
+        <button id="update-pwd-btn" class="btn-primary">Update Password</button>
+        <p class="password-log">Changes are logged with date & time.</p>
+      </div>
+      <h4>Cashier List</h4>
+      <div id="cashier-list"><p>No cashiers added yet.</p></div>
+    </div>
+
+    <!-- PRODUCTS TAB -->
+    <div id="products" class="tab-content">
+      <h3>Manage Products</h3>
+      <div class="form-card">
+        <select id="prod-store" class="form-input">
+          <option value="">— Select Store —</option>
+        </select>
+        <input type="text" id="prod-name" placeholder="Product Name *" class="form-input" required>
+        <input type="number" id="prod-qty" placeholder="Initial Quantity *" class="form-input" min="1" required>
+        <input type="number" id="prod-price" placeholder="Selling Price *" class="form-input" step="0.01" required>
+        <input type="text" id="prod-barcode" placeholder="Barcode / SKU (Auto if blank)" class="form-input">
+        <button id="add-prod-btn" class="btn-primary">Add Product</button>
+      </div>
+      <h4>Product List</h4>
+      <select id="prod-filter-store" class="form-input" style="max-width:250px;">
+        <option value="">— All Stores —</option>
+      </select>
+      <div id="prod-list"><p>No products added yet.</p></div>
+    </div>
+
+    <!-- STOCK OVERVIEW -->
+    <div id="stocks" class="tab-content">
+      <h3>Stock Overview</h3>
+      <p class="stock-hidden">This section is visible to Admin only — Cashier cannot view.</p>
+      <select id="stock-store-filter" class="form-input" style="max-width:250px;">
+        <option value="">— Select Store —</option>
+      </select>
+      <div id="stock-list"></div>
+    </div>
+
+    <!-- SALES REPORTS -->
+    <div id="sales" class="tab-content">
+      <h3>Sales Overview & Reports</h3>
+      <select id="report-store" class="form-input" style="max-width:250px;">
+        <option value="">— Select Store —</option>
+      </select>
+      <input type="date" id="report-from" class="form-input" style="max-width:150px;">
+      <input type="date" id="report-to" class="form-input" style="max-width:150px;">
+      <button id="gen-report-btn" class="btn-primary">Generate Report</button>
+      <div id="sales-report" style="margin-top:20px;"></div>
+    </div>
+
+    <!-- REQUESTS TAB -->
+    <div id="requests" class="tab-content">
+      <h3>Void & Stock Out Requests</h3>
+      <div id="pending-reqs"></div>
+      <h4>Request History</h4>
+      <div id="all-reqs"></div>
+    </div>
+
+    <!-- STOCK COUNT REQUESTS -->
+    <div id="count" class="tab-content">
+      <h3>Request Stock Count</h3>
+      <div class="form-card">
+        <select id="count-req-store" class="form-input">
+          <option value="">— Select Store —</option>
+        </select>
+        <label style="margin-top:10px;display:block;">Select Products to Count:</label>
+        <div id="count-prod-checklist" style="max-height:250px;overflow-y:auto;border:1px solid #ddd;padding:10px;margin:5px 0;"></div>
+        <button id="send-count-req-btn" class="btn-primary" style="margin-top:10px;">Send Count Request to Cashier</button>
+      </div>
+      <h4>Count Results</h4>
+      <div id="count-results"></div>
+    </div>
+
+    <!-- CHAT TAB -->
+    <div id="chat" class="tab-content">
+      <h3>Private Chat</h3>
+      <select id="chat-partner" class="form-input">
+        <option value="">— Select Who to Chat With —</option>
+        <option value="cashier">Cashier (Select below)</option>
+        <option value="sp">Service Provider</option>
+      </select>
+      <select id="chat-cashier-select" class="form-input hidden">
+        <option value="">— Choose Cashier —</option>
+      </select>
+      <div id="chat-box" class="chat-box" style="margin-top:10px;display:none;"></div>
+      <div style="display:flex;gap:8px;margin-top:10px;display:none;" id="chat-input-area">
+        <input type="text" id="chat-text" placeholder="Type message..." class="form-input" style="flex:1;">
+        <button id="send-chat-btn" class="btn-primary" style="width:auto;">Send</button>
+      </div>
+      <p style="font-size:0.8rem;color:#666;margin-top:8px;">💬 Conversations are private — Cashier ↔ Admin not visible to SP; Admin ↔ SP not visible to Cashier.</p>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div id="settings" class="tab-content">
+      <h3>Account Settings</h3>
+      <div class="form-card">
+        <h4>Change Admin Password</h4>
+        <p style="font-size:0.85rem;color:#666;">⚠️ Only Service Provider can change your Admin password. Contact SP for assistance.</p>
+        <input type="password" placeholder="Current Password (SP only)" class="form-input" disabled>
+        <input type="password" placeholder="New Password" class="form-input" disabled>
+        <button class="btn-secondary" disabled>Change — SP Only</button>
+      </div>
+      <div class="form-card">
+        <h4>System Data</h4>
+        <p>Full system reset button is available to Service Provider only.</p>
+      </div>
+    </div>
+  </div>
+
+<script type="module">
+import { requireAuth } from '../../auth/protect.js';
+import { logout } from '../../auth/login.js';
+const user = requireAuth(['admin']);
+if (!user) window.location.href = '../../auth/login.html';
+const CURRENT_USER = user;
+
+// ONLINE STATUS
+const indicator = document.getElementById('online-indicator');
+function updateOnlineStatus() {
+  const isOnline = navigator.onLine;
+  indicator.className = `online-indicator ${isOnline ? 'online' : 'offline'}`;
+  indicator.textContent = isOnline ? '● Online' : '● Offline';
+}
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+updateOnlineStatus();
+
+// SUBSCRIPTION
+async function checkSubscription() {
+  const data = await fsGet('data', 'subscription');
+  const sub = data?.value || {};
+  const alertBox = document.getElementById('sub-alert');
+  const textSpan = document.getElementById('sub-status-text');
+  
+  if (!sub.startDate) {
+    alertBox.classList.remove('hidden');
+    alertBox.classList.remove('expired');
+    textSpan.textContent = 'Free Trial Active — Start Date Not Set. Ends 7 days after first use.';
+    return;
+  }
+  
+  const start = new Date(sub.startDate);
+  const expiry = new Date(start.getTime() + 7 * 86400000);
+  const now = new Date();
+  const daysLeft = Math.ceil((expiry - now) / 86400000);
+  
+  alertBox.classList.remove('hidden');
+  if (now > expiry) {
+    alertBox.classList.add('expired');
+    textSpan.textContent = `🔴 EXPIRED — Subscription ended ${expiry.toLocaleDateString()}. Please contact Service Provider to renew.`;
+  } else if (daysLeft <= 2) {
+    alertBox.classList.remove('expired');
+    textSpan.textContent = `⚠️ Expiring SOON — Expires: ${expiry.toLocaleDateString()} (${daysLeft} day(s) remaining).`;
+  } else {
+    alertBox.classList.remove('expired');
+    textSpan.textContent = `✅ Active — Subscription Expires: ${expiry.toLocaleDateString()} (${daysLeft} days remaining)`;
+  }
+}
+checkSubscription();
+
+document.getElementById('user-info').textContent = `${CURRENT_USER.name || 'Admin'} — Admin / Owner`;
+
+// TABS
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.onclick = async () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'stocks') await loadStockOverview();
+    if (btn.dataset.tab === 'count') await loadCountChecklist();
+  };
+});
+
+// ========== STORES ==========
+async function renderStores() {
+  const data = await fsGet('data', 'stores');
+  const stores = data?.value || [];
+  if (!stores.length) {
+    document.getElementById('store-list').innerHTML = '<p>No stores added. Add your first store above.</p>';
+    return;
+  }
+  document.getElementById('store-list').innerHTML = stores.map(s => `
+    <div class="item-card">
+      <strong>${s.code || '#' + s.id.slice(-4)}</strong> — ${s.name}<br>
+      ${s.location ? `<small>📍 ${s.location}</small><br>` : ''}
+      Created: ${new Date(s.createdAt).toLocaleDateString()}<br>
+      <button class="btn-secondary delete-store-btn" data-id="${s.id}" style="margin-top:8px;background:#dc3545;color:#fff;border:none;cursor:pointer;">Delete Store</button>
+    </div>
+  `).join('');
+  
+  const opts = '<option value="">— Select —</option>' +
+    stores.map(s => `<option value="${s.id}">${s.code || ''} ${s.name}</option>`).join('');
+  document.getElementById('cashier-store').innerHTML = opts;
+  document.getElementById('prod-store').innerHTML = opts;
+  document.getElementById('prod-filter-store').innerHTML = opts;
+  document.getElementById('stock-store-filter').innerHTML = opts;
+  document.getElementById('report-store').innerHTML = opts;
+  document.getElementById('count-req-store').innerHTML = opts;
+}
+
+document.getElementById('add-store-btn').onclick = async () => {
+  const name = document.getElementById('store-name').value.trim();
+  if (!name) return alert('Enter store name.');
+  const data = await fsGet('data', 'stores');
+  const stores = data?.value || [];
+  if (stores.length >= 20) return alert('Maximum 20 stores allowed.');
+  const store = {
+    id: 'store-' + Date.now(),
+    code: document.getElementById('store-code').value.trim() || '',
+    name,
+    location: document.getElementById('store-location').value.trim() || '',
+    createdAt: new Date().toISOString()
+  };
+  stores.push(store);
+  await fsSet('data', 'stores', { value: stores });
+  alert('Store added ✅');
+  document.getElementById('store-name').value = '';
+  document.getElementById('store-code').value = '';
+  document.getElementById('store-location').value = '';
+  await renderStores();
+};
+
+// ========== CASHIERS ==========
+async function renderCashiers() {
+  const cData = await fsGet('data', 'cashiers');
+  const cashiers = cData?.value || [];
+  const sData = await fsGet('data', 'stores');
+  const stores = sData?.value || [];
+  
+  if (!cashiers.length) {
+    document.getElementById('cashier-list').innerHTML = '<p>No cashiers added yet.</p>';
+    return;
+  }
+  document.getElementById('cashier-list').innerHTML = cashiers.map(c => {
+    const store = stores.find(s => s.id === c.storeId);
+    return `
+      <div class="item-card">
+        <strong>${c.fname} ${c.lname || ''}</strong><br>
+        Store: ${store ? store.name : 'Not Assigned'}<br>
+        Password: <code>${'•'.repeat(c.password.length)}</code>
+        ${c.lastPwdChange ? `<br><small>Last changed: ${new Date(c.lastPwdChange).toLocaleString()}</small>` : ''}<br>
+        <button class="btn-secondary delete-cashier-btn" data-id="${c.id}" style="margin-top:8px;background:#dc3545;color:#fff;border:none;cursor:pointer;">Remove Cashier</button>
+      </div>
+    `;
+  }).join('');
+  
+  document.getElementById('cashier-to-update').innerHTML =
+    '<option value="">— Select —</option>' +
+    cashiers.map(c => `<option value="${c.id}">${c.fname} ${c.lname || ''}</option>`).join('');
+  document.getElementById('chat-cashier-select').innerHTML =
+    '<option value="">— Select Cashier —</option>' +
+    cashiers.map(c => `<option value="${c.id}">${c.fname} ${c.lname || ''}</option>`).join('');
+}
+
+document.getElementById('add-cashier-btn').onclick = async () => {
+  const fname = document.getElementById('cashier-fname').value.trim();
+  const lname = document.getElementById('cashier-lname').value.trim();
+  const pwd = document.getElementById('cashier-pwd').value.trim();
+  const storeId = document.getElementById('cashier-store').value;
+  if (!fname || !pwd || pwd.length !== 4) return alert('Fill name and 4-digit password.');
+  
+  const cData = await fsGet('data', 'cashiers');
+  const cashiers = cData?.value || [];
+  if (cashiers.length >= 20) return alert('Maximum 20 cashiers allowed.');
+  
+  const cashier = {
+    id: 'cashier-' + Date.now(),
+    fname,
+    lname,
+    name: `${fname} ${lname}`.trim(),
+    password: pwd,
+    storeId,
+    createdAt: new Date().toISOString()
+  };
+  cashiers.push(cashier);
+  await fsSet('data', 'cashiers', { value: cashiers });
+  alert('Cashier created ✅ Can now log in.');
+  document.getElementById('cashier-fname').value = '';
+  document.getElementById('cashier-lname').value = '';
+  document.getElementById('cashier-pwd').value = '';
+  await renderCashiers();
+};
+
+document.getElementById('update-pwd-btn').onclick = async () => {
+  const id = document.getElementById('cashier-to-update').value;
+  const newPwd = document.getElementById('new-cashier-pwd').value.trim();
+  if (!id || newPwd.length !== 4) return alert('Select cashier and enter 4-digit password.');
+  
+  const cData = await fsGet('data', 'cashiers');
+  const cashiers = cData?.value || [];
+  const idx = cashiers.findIndex(c => c.id === id);
+  if (idx < 0) return alert('Cashier not found.');
+  
+  cashiers[idx].prevPassword = cashiers[idx].password;
+  cashiers[idx].password = newPwd;
+  cashiers[idx].lastPwdChange = new Date().toISOString();
+  await fsSet('data', 'cashiers', { value: cashiers });
+  
+  alert('Password updated ✅');
+  document.getElementById('new-cashier-pwd').value = '';
+  await renderCashiers();
+};
+
+// ========== PRODUCTS ==========
+async function renderProducts(filterStore=null) {
+  const pData = await fsGet('data', 'products');
+  let prods = pData?.value || [];
+  if (filterStore) prods = prods.filter(p => p.storeId === filterStore);
+  
+  document.getElementById('prod-list').innerHTML = prods.length === 0
+    ? '<p>No products added.</p>'
+    : prods.map(p => `
+        <div class="item-card">
+          <strong>${p.name}</strong><br>
+          Price: ₱${p.price.toFixed(2)} | Stock: ${p.stock || 0}<br>
+          <small>Barcode: ${p.barcode || 'Auto-generated'}</small><br>
+          <button class="btn-secondary delete-product-btn" data-id="${p.id}" style="margin-top:8px;background:#dc3545;color:#fff;border:none;cursor:pointer;">Delete Product</button>
+        </div>
+      `).join('');
+}
+
+document.getElementById('add-prod-btn').onclick = async () => {
+  const storeId = document.getElementById('prod-store').value;
+  const name = document.getElementById('prod-name').value.trim();
+  const qty = parseInt(document.getElementById('prod-qty').value);
+  const price = parseFloat(document.getElementById('prod-price').value);
+  let barcode = document.getElementById('prod-barcode').value.trim();
+  
+  if (!storeId || !name || isNaN(qty) || isNaN(price)) return alert('Fill all required fields.');
+  if (!barcode) barcode = 'SKU-' + Date.now();
+  
+  const pData = await fsGet('data', 'products');
+  const prods = pData?.value || [];
+  prods.push({
+    id: 'prod-' + Date.now(),
+    storeId,
+    name,
+    stock: qty,
+    price,
+    barcode,
+    createdAt: new Date().toISOString()
+  });
+  await fsSet('data', 'products', { value: prods });
+  
+  alert('Product added ✅');
+  document.getElementById('prod-name').value = '';
+  document.getElementById('prod-qty').value = '';
+  document.getElementById('prod-price').value = '';
+  document.getElementById('prod-barcode').value = '';
+  await renderProducts();
+};
+
+document.getElementById('prod-filter-store').onchange = async e => {
+  await renderProducts(e.target.value || null);
+};
+
+// ========== DELETE FUNCTIONS ==========
+document.addEventListener('click', async e => {
+  if (e.target.classList.contains('delete-store-btn')) {
+    if (!confirm('⚠️ Delete this store? All products & cashiers linked to it will also be removed. Cannot be undone!')) return;
+    const storeId = e.target.dataset.id;
+    
+    let sData = await fsGet('data', 'stores');
+    let stores = sData?.value || [];
+    stores = stores.filter(s => s.id !== storeId);
+    await fsSet('data', 'stores', { value: stores });
+    
+    let pData = await fsGet('data', 'products');
+    let products = pData?.value || [];
+    products = products.filter(p => p.storeId !== storeId);
+    await fsSet('data', 'products', { value: products });
+    
+    let cData = await fsGet('data', 'cashiers');
+    let cashiers = cData?.value || [];
+    cashiers = cashiers.filter(c => c.storeId !== storeId);
+    await fsSet('data', 'cashiers', { value: cashiers });
+    
+    alert('✅ Store and related data deleted');
+    await renderStores();
+    await renderProducts();
+    await renderCashiers();
+  }
+  
+  if (e.target.classList.contains('delete-cashier-btn')) {
+    if (!confirm('Remove this cashier? They will no longer be able to log in.')) return;
+    const cid = e.target.dataset.id;
+    
+    let cData = await fsGet('data', 'cashiers');
+    let cashiers = cData?.value || [];
+    cashiers = cashiers.filter(c => c.id !== cid);
+    await fsSet('data', 'cashiers', { value: cashiers });
+    
+    alert('✅ Cashier removed');
+    await renderCashiers();
+  }
+  
+  if (e.target.classList.contains('delete-product-btn')) {
+    if (!confirm('Delete this product? Stock & history may be affected.')) return;
+    const pid = e.target.dataset.id;
+    
+    let pData = await fsGet('data', 'products');
+    let products = pData?.value || [];
+    products = products.filter(p => p.id !== pid);
+    await fsSet('data', 'products', { value: products });
+    
+    alert('✅ Product deleted');
+    await renderProducts();
+  }
+});
+
+// ========== STOCK OVERVIEW ==========
+async function loadStockOverview() {
+  const storeId = document.getElementById('stock-store-filter').value;
+  const pData = await fsGet('data', 'products');
+  let prods = pData?.value || [];
+  const sData = await fsGet('data', 'stores');
+  const stores = sData?.value || [];
+  
+  if (storeId) prods = prods.filter(p => p.storeId === storeId);
+  
+  document.getElementById('stock-list').innerHTML = prods.length === 0
+    ? '<p>No products found.</p>'
+    : `<table>
+        <tr><th>Product</th><th>Store</th><th>Price</th><th>Current Stock</th></tr>
+        ${prods.map(p => {
+          const s = stores.find(st => st.id === p.storeId);
+          return `<tr>
+            <td>${p.name}</td>
+            <td>${s ? s.name : '—'}</td>
+            <td>₱${p.price.toFixed(2)}</td>
+            <td><strong>${p.stock || 0}</strong></td>
+          </tr>`;
+        }).join('')}
+      </table>`;
+}
+
+document.getElementById('stock-store-filter').onchange = loadStockOverview;
+
+// ========== SALES REPORTS ==========
+document.getElementById('gen-report-btn').onclick = async () => {
+  const storeId = document.getElementById('report-store').value;
+  const from = document.getElementById('report-from').value;
+  const to = document.getElementById('report-to').value;
+  
+  const tData = await fsGet('data', 'transactions');
+  let txs = tData?.value || [];
+  
+  if (storeId) txs = txs.filter(t => t.storeId === storeId);
+  if (from) txs = txs.filter(t => new Date(t.timestamp) >= new Date(from));
+  if (to) txs = txs.filter(t => new Date(t.timestamp) <= new Date(to + 'T23:59:59'));
+  
+  const totalCash = txs.filter(t => t.paymentMethod === 'cash' || t.paymentMethod === 'split').reduce((s,t)=>s+(t.cashAmount||0),0);
+  const totalGcash = txs.filter(t => t.paymentMethod === 'gcash' || t.paymentMethod === 'split').reduce((s,t)=>s+(t.gcashAmount||0),0);
+  const grandTotal = txs.reduce((s,t)=>s+t.total,0);
+  
+  document.getElementById('sales-report').innerHTML = `
+    <div class="item-card">
+      <h4>Report Summary</h4>
+      <p>Transactions: ${txs.length}</p>
+      <p>Total Sales: <strong>₱${grandTotal.toFixed(2)}</strong></p>
+      <p>Cash: ₱${totalCash.toFixed(2)}</p>
+      <p>GCash: ₱${totalGcash.toFixed(2)}</p>
+    </div>
+    <h4>Transaction Details</h4>
+    ${txs.length === 0 ? '<p>No transactions for selected period.</p>' : txs.map(t => `
+      <div class="item-card">
+        <strong>${new Date(t.timestamp).toLocaleString()}</strong> — ${t.cashierName}<br>
+        Items: ${t.items.length} | Total: ₱${t.total.toFixed(2)} | ${t.paymentMethod.toUpperCase()}
+      </div>
+    `).join('')}
+  `;
+};
+
+// ========== REQUESTS ==========
+async function loadRequests() {
+  const rData = await fsGet('data', 'requests');
+  const reqs = rData?.value || [];
+  const sData = await fsGet('data', 'stores');
+  const stores = sData?.value || [];
+  const cData = await fsGet('data', 'cashiers');
+  const cashiers = cData?.value || [];
+  
+  const pending = reqs.filter(r => r.status === 'pending');
+  const all = reqs.slice(0,30);
+  
+  document.getElementById('pending-reqs').innerHTML = pending.length === 0
+    ? '<p>No pending requests.</p>'
+    : pending.map(r => {
+        const c = cashiers.find(x => x.id === r.cashierId);
+        const s = stores.find(x => x.id === r.storeId);
+        return `
+          <div class="item-card">
+            <strong>${r.type === 'void' ? '🔴 VOID REQUEST' : '📦 STOCK OUT'}</strong>
+            <span class="badge pending">Pending</span><br>
+            From: ${c ? c.name : 'Unknown Cashier'} @ ${s ? s.name : 'Unknown Store'}<br>
+            ${r.type === 'void' 
+              ? `Void Ticket: ${r.voidTxId}<br>Correct Ticket: ${r.correctTxId || 'None'}` 
+              : `Product: ${r.productId}<br>Qty: ${r.qty}`}<br>
+            Reason: ${r.reason}<br>
+            <button data-id="${r.id}" data-status="approved" class="approve-btn btn-primary btn-sm">✓ Approve</button>
+            <button data-id="${r.id}" data-status="rejected" class="reject-btn btn-secondary btn-sm" style="margin-left:5px;">✗ Reject</button>
+          </div>
+        `;
+      }).join('');
+  
+  document.getElementById('all-reqs').innerHTML = all.length === 0
+    ? '<p>No requests yet.</p>'
+    : all.map(r => {
+        const c = cashiers.find(x => x.id === r.cashierId);
+        return `
+          <div class="item-card">
+            <strong>${r.type === 'void' ? 'VOID' : 'STOCK OUT'}</strong>
+            <span class="badge ${r.status}">${r.status}</span><br>
+            ${c ? c.name : 'Unknown'} — ${r.reason}<br>
+            <small>${new Date(r.createdAt).toLocaleString()}</small>
+          </div>
+        `;
+      }).join('');
+  
+  document.querySelectorAll('.approve-btn, .reject-btn').forEach(btn => {
+    btn.onclick = async () => {
+      const id = btn.dataset.id;
+      const newStatus = btn.dataset.status;
+      const rData = await fsGet('data', 'requests');
+      const reqs = rData?.value || [];
+      const idx = reqs.findIndex(r => r.id === id);
+      
+      if (idx >= 0) {
+        reqs[idx].status = newStatus;
+        reqs[idx].reviewedAt = new Date().toISOString();
+        reqs[idx].reviewedBy = CURRENT_USER.id;
+        
+        if (reqs[idx].type === 'stockout' && newStatus === 'approved') {
+          const pData = await fsGet('data', 'products');
+          const prods = pData?.value || [];
+          const pIdx = prods.findIndex(p => p.id === reqs[idx].productId && p.storeId === reqs[idx].storeId);
+          if (pIdx >= 0) prods[pIdx].stock = Math.max(0, (prods[pIdx].stock || 0) - reqs[idx].qty);
+          await fsSet('data', 'products', { value: prods });
+        }
+        
+        await fsSet('data', 'requests', { value: reqs });
+        alert(`Request ${newStatus} ✅`);
+        await loadRequests();
+      }
+    };
+  });
+}
+
+// ========== STOCK COUNT ==========
+async function loadCountChecklist() {
+  const storeId = document.getElementById('count-req-store').value;
+  if (!storeId) {
+    document.getElementById('count-prod-checklist').innerHTML = '<p style="color:#888;">Select store first to see products.</p>';
+    return;
+  }
+  const pData = await fsGet('data', 'products');
+  const prods = (pData?.value || []).filter(p => p.storeId === storeId);
+  
+  document.getElementById('count-prod-checklist').innerHTML = `
+    <label style="display:block;margin-bottom:8px;">
+      <input type="checkbox" id="count-all"> <strong>Select All Products</strong>
+    </label>
+    ${prods.map(p => `
+      <label style="display:block;">
+        <input type="checkbox" class="prod-check" value="${p.id}">
+        ${p.name} (Sys: ${p.stock || 0})
+      </label>
+    `).join('')}
+  `;
+  
+  document.getElementById('count-all').onchange = e => {
+    document.querySelectorAll('.prod-check').forEach(cb => cb.checked = e.target.checked);
+  };
+}
+
+document.getElementById('count-req-store').onchange = loadCountChecklist;
+
+document.getElementById('send-count-req-btn').onclick = async () => {
+  const storeId = document.getElementById('count-req-store').value;
+  if (!storeId) return alert('Select store.');
+  
+  const selected = Array.from(document.querySelectorAll('.prod-check:checked')).map(cb => cb.value);
+  const req = {
+    id: 'count-' + Date.now(),
+    storeId,
+    productIds: selected,
+    status: 'pending',
+    requestedAt: new Date().toISOString(),
+    requestedBy: CURRENT_USER.id
+  };
+  
+  const cData = await fsGet('data', 'countRequests');
+  const counts = cData?.value || [];
+  counts.unshift(req);
+  await fsSet('data', 'countRequests', { value: counts });
+  
+  alert('Count request sent to cashier ✅');
+  await loadCountResults();
+};
+
+async function loadCountResults() {
+  const cData = await fsGet('data', 'countRequests');
+  const counts = cData?.value || [];
+  const pData = await fsGet('data', 'products');
+  const prods = pData?.value || [];
+  
+  document.getElementById('count-results').innerHTML = counts.length === 0
+    ? '<p>No count requests sent.</p>'
+    : counts.map(c => {
+        const storeProds = prods.filter(p => p.storeId === c.storeId);
+        let resultHtml = '';
+        if (c.status === 'submitted' && c.results) {
+          resultHtml = c.results.map(r => {
+            const p = storeProds.find(x => x.id === r.productId);
+            const sysQty = p ? (p.stock || 0) : 'N/A';
+            const diff = r.actual - sysQty;
+            return `<div style="padding:4px 8px;border-bottom:1px solid #eee;">
+              ${p ? p.name : 'Unknown Product'}: System ${sysQty} vs Actual ${r.actual}
+              <strong style="color:${diff===0?'green':diff>0?'blue':'red'}">(${diff>=0?'+':''}${diff})</strong>
+            </div>`;
+          }).join('');
+        }
+        return `
+          <div class="item-card">
+            <strong>Request — ${c.status.toUpperCase()}</strong>
+            <span class="badge ${c.status==='pending'?'pending':'approved'}">${c.status}</span><br>
+            ${c.productIds.length === 0 ? 'Count ALL products' : c.productIds.length + ' product(s) selected'}<br>
+            Sent: ${new Date(c.requestedAt).toLocaleString()}
+            ${c.submittedAt ? `<br>Submitted: ${new Date(c.submittedAt).toLocaleString()}` : ''}
+            ${resultHtml ? `<div style="margin-top:8px;background:#f9f9f9;padding:8px;border-radius:4px;">${resultHtml}</div>` : ''}
+          </div>
+        `;
+      }).join('');
+}
+
+// ========== CHAT ==========
+let CHAT_TARGET = null;
+
+document.getElementById('chat-partner').onchange = e => {
+  const val = e.target.value;
+  document.getElementById('chat-cashier-select').classList.toggle('hidden', val !== 'cashier');
+  CHAT_TARGET = null;
+  document.getElementById('chat-box').style.display = 'none';
+  document.getElementById('chat-input-area').style.display = 'none';
+  if (val === 'sp') {
+    CHAT_TARGET = { type: 'sp', id: 'sp' };
+    loadChatMessages();
+  }
+};
+
+document.getElementById('chat-cashier-select').onchange = e => {
+  const id = e.target.value;
+  if (!id) return;
+  CHAT_TARGET = { type: 'cashier', id };
+  loadChatMessages();
+};
+
+async function loadChatMessages() {
+  if (!CHAT_TARGET) return;
+  const convKey = CHAT_TARGET.type === 'sp' ? 'chat_admin_sp' : `chat_admin_cashier_${CHAT_TARGET.id}`;
+  const mData = await fsGet('chat', convKey);
+  const msgs = mData?.value || [];
+  
+  document.getElementById('chat-box').style.display = 'block';
+  document.getElementById('chat-input-area').style.display = 'flex';
+  document.getElementById('chat-box').innerHTML = msgs.length === 0
+    ? '<p style="color:#888;">No messages yet. Start the conversation.</p>'
+    : msgs.map(m => `
+        <div class="chat-msg ${m.senderId === CURRENT_USER.id ? 'sent' : 'received'}">
+          <strong>${m.senderName}:</strong> ${m.text}<br>
+          <small style="opacity:0.7;">${new Date(m.time).toLocaleTimeString()}</small>
+        </div>
+      `).join('');
+  document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
+}
+
+document.getElementById('send-chat-btn').onclick = async () => {
+  if (!CHAT_TARGET) return alert('Select recipient first.');
+  const text = document.getElementById('chat-text').value.trim();
+  if (!text) return;
+  
+  const convKey = CHAT_TARGET.type === 'sp' ? 'chat_admin_sp' : `chat_admin_cashier_${CHAT_TARGET.id}`;
+  const receiverKey = CHAT_TARGET.type === 'sp' ? 'chat_sp_admin' : `chat_cashier_admin`;
+  
+  const msg = {
+    senderId: CURRENT_USER.id,
+    senderName: CURRENT_USER.name || 'Admin',
+    text,
+    time: new Date().toISOString()
+  };
+  
+  const mData = await fsGet('chat', convKey);
+  const msgs = mData?.value || [];
+  msgs.push(msg);
+  await fsSet('chat', convKey, { value: msgs });
+  
+  const rData = await fsGet('chat', receiverKey);
+  const receiverMsgs = rData?.value || [];
+  receiverMsgs.push(msg);
+  await fsSet('chat', receiverKey, { value: receiverMsgs });
+  
+  document.getElementById('chat-text').value = '';
+  await loadChatMessages();
+};
+
+// LOGOUT
+document.getElementById('logout-btn').onclick = () => {
+  if (confirm('Log out? All password fields will be cleared.')) {
+    document.querySelectorAll('input[type="password"]').forEach(el => el.value = '');
+    logout();
+  }
+};
+
+// ONLOAD
+window.addEventListener('load', async () => {
+  // I-upload ang dati mong data — gawin lang sa pangunahing device
+  if (!sessionStorage.getItem('migrated') && 
+      confirm('I-upload ba ang lahat ng data sa Cloud? Gawin lang sa pangunahing device!')) {
+    await migrateLocalToFirebase();
+    sessionStorage.setItem('migrated', 'yes');
+  }
+  
+  // Simulan ang real-time sync
+  fsWatch('data', async () => {
+    await renderStores();
+    await renderCashiers();
+    await renderProducts();
+    await loadRequests();
+    await loadCountResults();
+  });
+  
+  await renderStores();
+  await renderCashiers();
+  await renderProducts();
+  await loadRequests();
+  await loadCountResults();
+});
 </script>
 </body>
 </html>
