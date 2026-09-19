@@ -6,33 +6,46 @@
   <title>Admin / Owner — BPOS</title>
   <link rel="stylesheet" href="../assets/css/style.css">
   <style>
-    .online-indicator{position:fixed;top:10px;right:10px;padding:6px 12px;border-radius:20px;font-weight:bold;font-size:0.85rem;z-index:999;}
-    .online-indicator.online{background:#d4edda;color:#155724;}
-    .online-indicator.offline{background:#f8d7da;color:#721c24;}
-    .tab-content{display:none;}
-    .tab-content.active{display:block;}
-    .item-card{border:1px solid #ddd;border-radius:8px;padding:12px;margin:8px 0;background:#fff;}
-    .form-card{border:1px solid #ddd;border-radius:8px;padding:15px;margin:10px 0;background:#fff;}
-    .chat-box{border:1px solid #ccc;border-radius:8px;padding:10px;height:300px;overflow-y:auto;background:#fafafa;}
-    .chat-msg{margin:6px 0;padding:8px;border-radius:8px;max-width:75%;}
-    .chat-msg.sent{background:#6f42c1;color:#fff;margin-left:auto;}
-    .chat-msg.received{background:#e9ecef;color:#333;margin-right:auto;}
-    .hidden{display:none !important;}
-    .badge{display:inline-block;padding:3px 8px;border-radius:12px;font-size:0.75rem;font-weight:bold;}
-    .badge.pending{background:#fff3cd;color:#856404;}
-    .badge.approved{background:#d4edda;color:#155724;}
-    .badge.rejected{background:#f8d7da;color:#721c24;}
-    .badge.approved::after{content:" ✓";}
-    .badge.rejected::after{content:" ✗";}
-    .subscription-alert{background:#fff3cd;border-left:4px solid #ffc107;padding:12px;margin:10px 0;}
-    .subscription-alert.expired{background:#f8d7da;border-color:#dc3545;}
-    .password-log{font-size:0.8rem;color:#666;margin-top:5px;}
-    .denom-row{display:flex;align-items:center;gap:10px;margin:4px 0;}
-    .btn-sm{padding:4px 8px;font-size:0.85rem;}
-    table{width:100%;border-collapse:collapse;margin:10px 0;}
-    th,td{border:1px solid #ddd;padding:8px;text-align:left;}
-    th{background:#f5f5f5;}
-    .stock-hidden{display:none;}
+    /* Additional page-specific styles */
+    .pos-main-layout {
+      display: grid;
+      grid-template-columns: 400px 1fr;
+      gap: 16px;
+      min-height: 75vh;
+    }
+    @media (max-width: 1024px) {
+      .pos-main-layout { grid-template-columns: 1fr; }
+    }
+    .section-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      padding: 20px;
+      height: 100%;
+    }
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e9ecef;
+    }
+    .hidden { display: none !important; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; }
+    .badge.pending { background: #fff3cd; color: #856404; }
+    .badge.approved { background: #d4edda; color: #155724; }
+    .badge.rejected { background: #f8d7da; color: #721c24; }
+    .subscription-alert { background: #fff3cd; border-left: 4px solid #ffc107; padding: 14px; margin: 12px 0; border-radius: 0 10px 10px 0; }
+    .subscription-alert.expired { background: #f8d7da; border-color: #dc3545; }
+    .password-log { font-size: 0.8rem; color: #666; margin-top: 8px; }
+    .stock-hidden { display: none; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+    th, td { border: 1px solid #dee2e6; padding: 10px 14px; text-align: left; }
+    th { background: #f8f9fa; font-weight: 700; }
+    .chat-box { border: 1px solid #dee2e6; border-radius: 10px; padding: 14px; height: 320px; overflow-y: auto; background: #fafafa; }
+    .chat-msg { margin: 8px 0; padding: 10px 14px; border-radius: 16px; max-width: 75%; }
+    .chat-msg.sent { background: #6f42c1; color: #fff; margin-left: auto; }
+    .chat-msg.received { background: #e9ecef; color: #333; margin-right: auto; }
   </style>
 </head>
 <body>
@@ -103,6 +116,7 @@ async function migrateLocalToFirebase() {
 
   <div id="online-indicator" class="online-indicator">● Checking...</div>
   <div class="container">
+    <!-- HEADER -->
     <div class="header">
       <div>
         <h1>⚙️ Admin / Owner Dashboard</h1>
@@ -110,66 +124,77 @@ async function migrateLocalToFirebase() {
       </div>
       <button id="logout-btn" class="btn-logout">Log Out</button>
     </div>
+
+    <!-- SUBSCRIPTION ALERT -->
     <div id="sub-alert" class="subscription-alert hidden">
       <strong>⚠️ Subscription Notice:</strong>
       <span id="sub-status-text"></span>
     </div>
+
+    <!-- TABS NAVIGATION -->
     <div class="tabs">
       <button class="tab-btn active" data-tab="stores">Stores</button>
       <button class="tab-btn" data-tab="cashiers">Cashiers</button>
       <button class="tab-btn" data-tab="products">Products</button>
       <button class="tab-btn" data-tab="stocks">Stock Overview</button>
       <button class="tab-btn" data-tab="sales">Sales Reports</button>
-      <button class="tab-btn" data-tab="requests">Void/StockOut Requests</button>
+      <button class="tab-btn" data-tab="requests">Requests</button>
       <button class="tab-btn" data-tab="count">Stock Count</button>
       <button class="tab-btn" data-tab="chat">Chat</button>
       <button class="tab-btn" data-tab="settings">Settings</button>
     </div>
 
-    <!-- STORES TAB -->
+    <!-- ==============================================
+         STORES TAB
+         ============================================== -->
     <div id="stores" class="tab-content active">
-      <h3>Manage Stores (1–20)</h3>
-      <div class="form-card">
-        <h4>Add New Store</h4>
+      <h3 style="margin-bottom:16px;">🏪 Manage Stores (1–20)</h3>
+      <div class="section-card">
+        <h4 class="section-title">Add New Store</h4>
         <input type="text" id="store-code" placeholder="Store Code (Auto if blank)" class="form-input">
         <input type="text" id="store-name" placeholder="Store Name *" class="form-input" required>
         <input type="text" id="store-location" placeholder="Location (Optional)" class="form-input">
-        <button id="add-store-btn" class="btn-primary">Add Store</button>
+        <button id="add-store-btn" class="btn-primary">➕ Add Store</button>
       </div>
-      <h4>Store List</h4>
+      <h4 style="margin:24px 0 12px;">Store List</h4>
       <div id="store-list"><p>No stores added yet.</p></div>
     </div>
 
-    <!-- CASHIERS TAB -->
+    <!-- ==============================================
+         CASHIERS TAB
+         ============================================== -->
     <div id="cashiers" class="tab-content">
-      <h3>Manage Cashiers (1–20)</h3>
-      <div class="form-card">
-        <h4>Add New Cashier</h4>
+      <h3 style="margin-bottom:16px;">👤 Manage Cashiers (1–20)</h3>
+      <div class="section-card">
+        <h4 class="section-title">Add New Cashier</h4>
         <input type="text" id="cashier-fname" placeholder="First Name *" class="form-input" required>
         <input type="text" id="cashier-lname" placeholder="Last Name (Optional)" class="form-input">
         <input type="password" id="cashier-pwd" placeholder="Password (4 digits) *" class="form-input" maxlength="4" required>
         <select id="cashier-store" class="form-input">
           <option value="">— Assign to Store —</option>
         </select>
-        <button id="add-cashier-btn" class="btn-primary">Create Cashier</button>
+        <button id="add-cashier-btn" class="btn-primary">✅ Create Cashier</button>
       </div>
-      <div class="form-card" style="margin-top:15px;">
-        <h4>Change Cashier Password</h4>
+      <div class="section-card" style="margin-top:20px;">
+        <h4 class="section-title">Change Cashier Password</h4>
         <select id="cashier-to-update" class="form-input">
           <option value="">— Select Cashier —</option>
         </select>
         <input type="password" id="new-cashier-pwd" placeholder="New Password (4 digits)" class="form-input" maxlength="4">
-        <button id="update-pwd-btn" class="btn-primary">Update Password</button>
+        <button id="update-pwd-btn" class="btn-primary">🔑 Update Password</button>
         <p class="password-log">Changes are logged with date & time.</p>
       </div>
-      <h4>Cashier List</h4>
+      <h4 style="margin:24px 0 12px;">Cashier List</h4>
       <div id="cashier-list"><p>No cashiers added yet.</p></div>
     </div>
 
-    <!-- PRODUCTS TAB -->
+    <!-- ==============================================
+         PRODUCTS TAB
+         ============================================== -->
     <div id="products" class="tab-content">
-      <h3>Manage Products</h3>
-      <div class="form-card">
+      <h3 style="margin-bottom:16px;">📦 Manage Products</h3>
+      <div class="section-card">
+        <h4 class="section-title">Add New Product</h4>
         <select id="prod-store" class="form-input">
           <option value="">— Select Store —</option>
         </select>
@@ -177,99 +202,123 @@ async function migrateLocalToFirebase() {
         <input type="number" id="prod-qty" placeholder="Initial Quantity *" class="form-input" min="1" required>
         <input type="number" id="prod-price" placeholder="Selling Price *" class="form-input" step="0.01" required>
         <input type="text" id="prod-barcode" placeholder="Barcode / SKU (Auto if blank)" class="form-input">
-        <button id="add-prod-btn" class="btn-primary">Add Product</button>
+        <button id="add-prod-btn" class="btn-primary">➕ Add Product</button>
       </div>
-      <h4>Product List</h4>
-      <select id="prod-filter-store" class="form-input" style="max-width:250px;">
+      <h4 style="margin:24px 0 12px;">Product List</h4>
+      <select id="prod-filter-store" class="form-input" style="max-width:280px;">
         <option value="">— All Stores —</option>
       </select>
-      <div id="prod-list"><p>No products added yet.</p></div>
+      <div id="prod-list" style="margin-top:12px;"><p>No products added yet.</p></div>
     </div>
 
-    <!-- STOCK OVERVIEW -->
+    <!-- ==============================================
+         STOCK OVERVIEW TAB
+         ============================================== -->
     <div id="stocks" class="tab-content">
-      <h3>Stock Overview</h3>
-      <p class="stock-hidden">This section is visible to Admin only — Cashier cannot view.</p>
-      <select id="stock-store-filter" class="form-input" style="max-width:250px;">
+      <h3 style="margin-bottom:16px;">📊 Stock Overview</h3>
+      <p class="stock-hidden" style="color:#666;margin-bottom:12px;">👁️ This section is visible to Admin only — Cashier cannot view.</p>
+      <select id="stock-store-filter" class="form-input" style="max-width:280px;">
         <option value="">— Select Store —</option>
       </select>
-      <div id="stock-list"></div>
+      <div id="stock-list" style="margin-top:16px;"></div>
     </div>
 
-    <!-- SALES REPORTS -->
+    <!-- ==============================================
+         SALES REPORTS TAB
+         ============================================== -->
     <div id="sales" class="tab-content">
-      <h3>Sales Overview & Reports</h3>
-      <select id="report-store" class="form-input" style="max-width:250px;">
-        <option value="">— Select Store —</option>
-      </select>
-      <input type="date" id="report-from" class="form-input" style="max-width:150px;">
-      <input type="date" id="report-to" class="form-input" style="max-width:150px;">
-      <button id="gen-report-btn" class="btn-primary">Generate Report</button>
+      <h3 style="margin-bottom:16px;">💰 Sales Overview & Reports</h3>
+      <div class="section-card">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <select id="report-store" class="form-input" style="max-width:220px;margin:0;">
+            <option value="">— Select Store —</option>
+          </select>
+          <input type="date" id="report-from" class="form-input" style="max-width:180px;margin:0;">
+          <input type="date" id="report-to" class="form-input" style="max-width:180px;margin:0;">
+          <button id="gen-report-btn" class="btn-primary">📊 Generate Report</button>
+        </div>
+      </div>
       <div id="sales-report" style="margin-top:20px;"></div>
     </div>
 
-    <!-- REQUESTS TAB -->
+    <!-- ==============================================
+         REQUESTS TAB
+         ============================================== -->
     <div id="requests" class="tab-content">
-      <h3>Void & Stock Out Requests</h3>
+      <h3 style="margin-bottom:16px;">📋 Void & Stock Out Requests</h3>
+      <h4 class="section-title" style="border-bottom:none;padding:0;margin:0 0 12px;">🔴 Pending Requests</h4>
       <div id="pending-reqs"></div>
-      <h4>Request History</h4>
+      <h4 class="section-title" style="margin-top:30px;">📜 Request History</h4>
       <div id="all-reqs"></div>
     </div>
 
-    <!-- STOCK COUNT REQUESTS -->
+    <!-- ==============================================
+         STOCK COUNT TAB
+         ============================================== -->
     <div id="count" class="tab-content">
-      <h3>Request Stock Count</h3>
-      <div class="form-card">
+      <h3 style="margin-bottom:16px;">🔢 Request Stock Count</h3>
+      <div class="section-card">
         <select id="count-req-store" class="form-input">
           <option value="">— Select Store —</option>
         </select>
-        <label style="margin-top:10px;display:block;">Select Products to Count:</label>
-        <div id="count-prod-checklist" style="max-height:250px;overflow-y:auto;border:1px solid #ddd;padding:10px;margin:5px 0;"></div>
-        <button id="send-count-req-btn" class="btn-primary" style="margin-top:10px;">Send Count Request to Cashier</button>
+        <label style="margin-top:12px;display:block;font-weight:600;">Select Products to Count:</label>
+        <div id="count-prod-checklist" style="max-height:280px;overflow-y:auto;border:1px solid #dee2e6;padding:14px;margin:10px 0;border-radius:8px;"></div>
+        <button id="send-count-req-btn" class="btn-primary">📤 Send Count Request to Cashier</button>
       </div>
-      <h4>Count Results</h4>
+      <h4 style="margin:24px 0 12px;">📋 Count Results</h4>
       <div id="count-results"></div>
     </div>
 
-    <!-- CHAT TAB -->
+    <!-- ==============================================
+         CHAT TAB
+         ============================================== -->
     <div id="chat" class="tab-content">
-      <h3>Private Chat</h3>
-      <select id="chat-partner" class="form-input">
-        <option value="">— Select Who to Chat With —</option>
-        <option value="cashier">Cashier (Select below)</option>
-        <option value="sp">Service Provider</option>
-      </select>
-      <select id="chat-cashier-select" class="form-input hidden">
-        <option value="">— Choose Cashier —</option>
-      </select>
-      <div id="chat-box" class="chat-box" style="margin-top:10px;display:none;"></div>
-      <div style="display:flex;gap:8px;margin-top:10px;display:none;" id="chat-input-area">
-        <input type="text" id="chat-text" placeholder="Type message..." class="form-input" style="flex:1;">
-        <button id="send-chat-btn" class="btn-primary" style="width:auto;">Send</button>
+      <h3 style="margin-bottom:16px;">💬 Private Chat</h3>
+      <div class="section-card">
+        <select id="chat-partner" class="form-input">
+          <option value="">— Select Who to Chat With —</option>
+          <option value="cashier">💬 Cashier (Select below)</option>
+          <option value="sp">🛠️ Service Provider</option>
+        </select>
+        <select id="chat-cashier-select" class="form-input hidden">
+          <option value="">— Choose Cashier —</option>
+        </select>
+        <div id="chat-box" class="chat-box" style="margin-top:16px;display:none;"></div>
+        <div style="display:flex;gap:10px;margin-top:12px;display:none;" id="chat-input-area">
+          <input type="text" id="chat-text" placeholder="Type message..." class="form-input" style="flex:1;margin:0;">
+          <button id="send-chat-btn" class="btn-primary" style="white-space:nowrap;">Send</button>
+        </div>
+        <p style="font-size:0.85rem;color:#666;margin-top:12px;border-top:1px solid #eee;padding-top:12px;">
+          🔒 Conversations are private — Cashier ↔ Admin not visible to SP; Admin ↔ SP not visible to Cashier.
+        </p>
       </div>
-      <p style="font-size:0.8rem;color:#666;margin-top:8px;">💬 Conversations are private — Cashier ↔ Admin not visible to SP; Admin ↔ SP not visible to Cashier.</p>
     </div>
 
-    <!-- SETTINGS TAB -->
+    <!-- ==============================================
+         SETTINGS TAB
+         ============================================== -->
     <div id="settings" class="tab-content">
-      <h3>Account Settings</h3>
-      <div class="form-card">
-        <h4>Change Admin Password</h4>
-        <p style="font-size:0.85rem;color:#666;">⚠️ Only Service Provider can change your Admin password. Contact SP for assistance.</p>
+      <h3 style="margin-bottom:16px;">⚙️ Account Settings</h3>
+      <div class="section-card">
+        <h4 class="section-title">Change Admin Password</h4>
+        <p style="font-size:0.9rem;color:#666;margin-bottom:12px;">
+          ⚠️ Only Service Provider can change your Admin password. Contact SP for assistance.
+        </p>
         <input type="password" placeholder="Current Password (SP only)" class="form-input" disabled>
         <input type="password" placeholder="New Password" class="form-input" disabled>
-        <button class="btn-secondary" disabled>Change — SP Only</button>
+        <button class="btn-secondary" disabled>🔒 Change — SP Only</button>
       </div>
-      <div class="form-card">
-        <h4>System Data</h4>
-        <p>Full system reset button is available to Service Provider only.</p>
-        <button id="trigger-migrate-btn" class="btn-secondary" style="margin-top:8px;">Upload Local Data to Cloud</button>
+      <div class="section-card" style="margin-top:20px;">
+        <h4 class="section-title">System Data</h4>
+        <p style="margin-bottom:12px;">Upload all local data to Cloud to sync across devices.</p>
+        <button id="trigger-migrate-btn" class="btn-secondary">☁️ Upload Local Data to Cloud</button>
       </div>
     </div>
-  </div>
+
+  </div><!-- /container -->
 
 <script type="module">
-// ✅ INAYOS NA ANG PATHS — mula pages/ → ../auth/
+// ✅ CORRECT PATHS — from pages/ → ../auth/
 import { requireAuth } from '../auth/protect.js';
 import { logout } from '../auth/login.js';
 
@@ -350,18 +399,20 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 async function renderStores() {
   const data = await fsGet('data', 'stores');
   const stores = data?.value || [];
+  const container = document.getElementById('store-list');
+  
   if (!stores.length) {
-    document.getElementById('store-list').innerHTML = '<p>No stores added. Add your first store above.</p>';
-    return;
+    container.innerHTML = '<p style="color:#888;padding:16px;">No stores added. Add your first store above.</p>';
+  } else {
+    container.innerHTML = stores.map(s => `
+      <div class="item-card">
+        <strong style="font-size:1.05rem;">${s.code || '#' + s.id.slice(-4)}</strong> — ${s.name}<br>
+        ${s.location ? `<small style="color:#666;">📍 ${s.location}</small><br>` : ''}
+        <small>Created: ${new Date(s.createdAt).toLocaleDateString()}</small><br>
+        <button class="btn-secondary delete-store-btn" data-id="${s.id}" style="margin-top:10px;background:#dc3545;color:#fff;border:none;">🗑️ Delete Store</button>
+      </div>
+    `).join('');
   }
-  document.getElementById('store-list').innerHTML = stores.map(s => `
-    <div class="item-card">
-      <strong>${s.code || '#' + s.id.slice(-4)}</strong> — ${s.name}<br>
-      ${s.location ? `<small>📍 ${s.location}</small><br>` : ''}
-      Created: ${new Date(s.createdAt).toLocaleDateString()}<br>
-      <button class="btn-secondary delete-store-btn" data-id="${s.id}" style="margin-top:8px;background:#dc3545;color:#fff;border:none;cursor:pointer;">Delete Store</button>
-    </div>
-  `).join('');
   
   const opts = '<option value="">— Select —</option>' +
     stores.map(s => `<option value="${s.id}">${s.code || ''} ${s.name}</option>`).join('');
@@ -388,7 +439,7 @@ document.getElementById('add-store-btn').onclick = async () => {
   });
   
   await fsSet('data', 'stores', { value: stores });
-  alert('Store added ✅');
+  alert('✅ Store added!');
   document.getElementById('store-name').value = '';
   document.getElementById('store-code').value = '';
   document.getElementById('store-location').value = '';
@@ -401,23 +452,24 @@ async function renderCashiers() {
   const cashiers = cData?.value || [];
   const sData = await fsGet('data', 'stores');
   const stores = sData?.value || [];
+  const container = document.getElementById('cashier-list');
   
   if (!cashiers.length) {
-    document.getElementById('cashier-list').innerHTML = '<p>No cashiers added yet.</p>';
-    return;
+    container.innerHTML = '<p style="color:#888;padding:16px;">No cashiers added yet.</p>';
+  } else {
+    container.innerHTML = cashiers.map(c => {
+      const store = stores.find(s => s.id === c.storeId);
+      return `
+        <div class="item-card">
+          <strong>${c.fname} ${c.lname || ''}</strong><br>
+          Store: ${store ? store.name : '<span style="color:#d9534f;">Not Assigned</span>'}<br>
+          Password: <code style="background:#eee;padding:2px 8px;border-radius:4px;">${'•'.repeat(c.password.length)}</code>
+          ${c.lastPwdChange ? `<br><small style="color:#666;">Last changed: ${new Date(c.lastPwdChange).toLocaleString()}</small>` : ''}<br>
+          <button class="btn-secondary delete-cashier-btn" data-id="${c.id}" style="margin-top:10px;background:#dc3545;color:#fff;border:none;">🗑️ Remove Cashier</button>
+        </div>
+      `;
+    }).join('');
   }
-  document.getElementById('cashier-list').innerHTML = cashiers.map(c => {
-    const store = stores.find(s => s.id === c.storeId);
-    return `
-      <div class="item-card">
-        <strong>${c.fname} ${c.lname || ''}</strong><br>
-        Store: ${store ? store.name : 'Not Assigned'}<br>
-        Password: <code>${'•'.repeat(c.password.length)}</code>
-        ${c.lastPwdChange ? `<br><small>Last changed: ${new Date(c.lastPwdChange).toLocaleString()}</small>` : ''}<br>
-        <button class="btn-secondary delete-cashier-btn" data-id="${c.id}" style="margin-top:8px;background:#dc3545;color:#fff;border:none;cursor:pointer;">Remove Cashier</button>
-      </div>
-    `;
-  }).join('');
   
   document.getElementById('cashier-to-update').innerHTML =
     '<option value="">— Select —</option>' +
@@ -448,7 +500,7 @@ document.getElementById('add-cashier-btn').onclick = async () => {
   });
   
   await fsSet('data', 'cashiers', { value: cashiers });
-  alert('Cashier created ✅ Can now log in.');
+  alert('✅ Cashier created! Can now log in.');
   document.getElementById('cashier-fname').value = '';
   document.getElementById('cashier-lname').value = '';
   document.getElementById('cashier-pwd').value = '';
@@ -469,7 +521,7 @@ document.getElementById('update-pwd-btn').onclick = async () => {
   cashiers[idx].lastPwdChange = new Date().toISOString();
   
   await fsSet('data', 'cashiers', { value: cashiers });
-  alert('Password updated ✅');
+  alert('✅ Password updated!');
   document.getElementById('new-cashier-pwd').value = '';
   await renderCashiers();
 };
@@ -481,13 +533,13 @@ async function renderProducts(filterStore = null) {
   if (filterStore) prods = prods.filter(p => p.storeId === filterStore);
   
   document.getElementById('prod-list').innerHTML = prods.length === 0
-    ? '<p>No products added.</p>'
+    ? '<p style="color:#888;padding:16px;">No products added yet.</p>'
     : prods.map(p => `
         <div class="item-card">
           <strong>${p.name}</strong><br>
-          Price: ₱${p.price.toFixed(2)} | Stock: ${p.stock || 0}<br>
-          <small>Barcode: ${p.barcode || 'Auto-generated'}</small><br>
-          <button class="btn-secondary delete-product-btn" data-id="${p.id}" style="margin-top:8px;background:#dc3545;color:#fff;border:none;cursor:pointer;">Delete Product</button>
+          Price: ₱${p.price.toFixed(2)} | In Stock: <strong>${p.stock || 0}</strong><br>
+          <small style="color:#666;">Barcode: ${p.barcode || 'Auto-generated'}</small><br>
+          <button class="btn-secondary delete-product-btn" data-id="${p.id}" style="margin-top:8px;background:#dc3545;color:#fff;border:none;">🗑️ Delete Product</button>
         </div>
       `).join('');
 }
@@ -514,7 +566,7 @@ document.getElementById('add-prod-btn').onclick = async () => {
   });
   
   await fsSet('data', 'products', { value: prods });
-  alert('Product added ✅');
+  alert('✅ Product added!');
   document.getElementById('prod-name').value = '';
   document.getElementById('prod-qty').value = '';
   document.getElementById('prod-price').value = '';
@@ -590,7 +642,7 @@ async function loadStockOverview() {
   if (storeId) prods = prods.filter(p => p.storeId === storeId);
   
   document.getElementById('stock-list').innerHTML = prods.length === 0
-    ? '<p>No products found.</p>'
+    ? '<p style="color:#888;padding:16px;">No products found.</p>'
     : `<table>
         <tr><th>Product</th><th>Store</th><th>Price</th><th>Current Stock</th></tr>
         ${prods.map(p => {
@@ -624,18 +676,18 @@ document.getElementById('gen-report-btn').onclick = async () => {
   const grandTotal = txs.reduce((s, t) => s + t.total, 0);
   
   document.getElementById('sales-report').innerHTML = `
-    <div class="item-card">
-      <h4>Report Summary</h4>
-      <p>Transactions: ${txs.length}</p>
-      <p>Total Sales: <strong>₱${grandTotal.toFixed(2)}</strong></p>
-      <p>Cash: ₱${totalCash.toFixed(2)}</p>
-      <p>GCash: ₱${totalGcash.toFixed(2)}</p>
+    <div class="section-card">
+      <h4 class="section-title">📊 Report Summary</h4>
+      <p style="font-size:1.1rem;">Transactions: <strong>${txs.length}</strong></p>
+      <p style="font-size:1.3rem;font-weight:700;color:#28a745;margin:12px 0;">Total Sales: ₱${grandTotal.toFixed(2)}</p>
+      <p>💵 Cash: <strong>₱${totalCash.toFixed(2)}</strong></p>
+      <p>📱 GCash: <strong>₱${totalGcash.toFixed(2)}</strong></p>
     </div>
-    <h4>Transaction Details</h4>
-    ${txs.length === 0 ? '<p>No transactions for selected period.</p>' : txs.map(t => `
+    <h4 style="margin:24px 0 12px;">📋 Transaction Details</h4>
+    ${txs.length === 0 ? '<p style="color:#888;padding:16px;">No transactions for selected period.</p>' : txs.map(t => `
       <div class="item-card">
         <strong>${new Date(t.timestamp).toLocaleString()}</strong> — ${t.cashierName}<br>
-        Items: ${t.items.length} | Total: ₱${t.total.toFixed(2)} | ${t.paymentMethod.toUpperCase()}
+        Items: ${t.items.length} | Total: <strong>₱${t.total.toFixed(2)}</strong> | ${t.paymentMethod.toUpperCase()}
       </div>
     `).join('')}
   `;
@@ -649,14 +701,12 @@ async function loadRequests() {
   const stores = sData?.value || [];
   const cData = await fsGet('data', 'cashiers');
   const cashiers = cData?.value || [];
-  const tData = await fsGet('data', 'transactions');
-  const txs = tData?.value || [];
   
   const pending = reqs.filter(r => r.status === 'pending');
   const all = reqs.slice(0, 30);
   
   document.getElementById('pending-reqs').innerHTML = pending.length === 0
-    ? '<p>No pending requests.</p>'
+    ? '<p style="color:#28a745;padding:16px;">✅ No pending requests.</p>'
     : pending.map(r => {
         const c = cashiers.find(x => x.id === r.cashierId);
         const s = stores.find(x => x.id === r.storeId);
@@ -669,14 +719,14 @@ async function loadRequests() {
               ? `Void Ticket: ${r.voidTxId}<br>Correct Ticket: ${r.correctTxId || 'None'}` 
               : `Product: ${r.productId}<br>Qty: ${r.qty}`}<br>
             Reason: ${r.reason}<br>
-            <button data-id="${r.id}" data-status="approved" class="approve-btn btn-primary btn-sm">✓ Approve</button>
-            <button data-id="${r.id}" data-status="rejected" class="reject-btn btn-secondary btn-sm" style="margin-left:5px;">✗ Reject</button>
+            <button data-id="${r.id}" data-status="approved" class="approve-btn btn-primary" style="margin-top:10px;">✅ Approve</button>
+            <button data-id="${r.id}" data-status="rejected" class="reject-btn btn-secondary" style="margin-left:8px;margin-top:10px;">❌ Reject</button>
           </div>
         `;
       }).join('');
   
   document.getElementById('all-reqs').innerHTML = all.length === 0
-    ? '<p>No requests yet.</p>'
+    ? '<p style="color:#888;padding:16px;">No requests yet.</p>'
     : all.map(r => {
         const c = cashiers.find(x => x.id === r.cashierId);
         return `
@@ -717,23 +767,11 @@ async function loadRequests() {
             }
           }
           
-          if (reqs[idx].type === 'void') {
-            const voidTx = txs.find(t => t.id === reqs[idx].voidTxId);
-            if (voidTx) {
-              voidTx.items.forEach(item => {
-                const pIdx = prods.findIndex(p => p.id === item.id && p.storeId === voidTx.storeId);
-                if (pIdx >= 0) {
-                  prods[pIdx].stock = (prods[pIdx].stock || 0) + item.qty;
-                }
-              });
-            }
-          }
-          
           await fsSet('data', 'products', { value: prods });
         }
         
         await fsSet('data', 'requests', { value: reqs });
-        alert(`Request ${newStatus} ✅`);
+        alert(`✅ Request ${newStatus}!`);
         await loadRequests();
       }
     };
@@ -751,13 +789,13 @@ async function loadCountChecklist() {
   const prods = (pData?.value || []).filter(p => p.storeId === storeId);
   
   document.getElementById('count-prod-checklist').innerHTML = `
-    <label style="display:block;margin-bottom:8px;">
-      <input type="checkbox" id="count-all"> <strong>Select All Products</strong>
+    <label style="display:block;margin-bottom:10px;font-weight:600;">
+      <input type="checkbox" id="count-all"> Select All Products
     </label>
     ${prods.map(p => `
-      <label style="display:block;">
+      <label style="display:block;padding:4px 0;">
         <input type="checkbox" class="prod-check" value="${p.id}">
-        ${p.name} (Sys: ${p.stock || 0})
+        ${p.name} (System Qty: ${p.stock || 0})
       </label>
     `).join('')}
   `;
@@ -786,7 +824,7 @@ document.getElementById('send-count-req-btn').onclick = async () => {
   counts.unshift(req);
   await fsSet('data', 'countRequests', { value: counts });
   
-  alert('Count request sent to cashier ✅');
+  alert('✅ Count request sent to cashier!');
   await loadCountResults();
 };
 async function loadCountResults() {
@@ -796,7 +834,7 @@ async function loadCountResults() {
   const prods = pData?.value || [];
   
   document.getElementById('count-results').innerHTML = counts.length === 0
-    ? '<p>No count requests sent.</p>'
+    ? '<p style="color:#888;padding:16px;">No count requests sent.</p>'
     : counts.map(c => {
         const storeProds = prods.filter(p => p.storeId === c.storeId);
         let resultHtml = '';
@@ -805,7 +843,7 @@ async function loadCountResults() {
             const p = storeProds.find(x => x.id === r.productId);
             const sysQty = p ? (p.stock || 0) : 'N/A';
             const diff = r.actual - sysQty;
-            return `<div style="padding:4px 8px;border-bottom:1px solid #eee;">
+            return `<div style="padding:6px 10px;border-bottom:1px solid #eee;">
               ${p ? p.name : 'Unknown Product'}: System ${sysQty} vs Actual ${r.actual}
               <strong style="color:${diff===0?'green':diff>0?'blue':'red'}">(${diff>=0?'+':''}${diff})</strong>
             </div>`;
@@ -818,7 +856,7 @@ async function loadCountResults() {
             ${c.productIds.length === 0 ? 'Count ALL products' : c.productIds.length + ' product(s) selected'}<br>
             Sent: ${new Date(c.requestedAt).toLocaleString()}
             ${c.submittedAt ? `<br>Submitted: ${new Date(c.submittedAt).toLocaleString()}` : ''}
-            ${resultHtml ? `<div style="margin-top:8px;background:#f9f9f9;padding:8px;border-radius:4px;">${resultHtml}</div>` : ''}
+            ${resultHtml ? `<div style="margin-top:10px;background:#f9f9f9;padding:10px;border-radius:6px;">${resultHtml}</div>` : ''}
           </div>
         `;
       }).join('');
@@ -864,7 +902,7 @@ async function loadChatMessages() {
   document.getElementById('chat-box').style.display = 'block';
   document.getElementById('chat-input-area').style.display = 'flex';
   document.getElementById('chat-box').innerHTML = msgs.length === 0
-    ? '<p style="color:#888;">No messages yet. Start the conversation.</p>'
+    ? '<p style="color:#888;text-align:center;">No messages yet. Start the conversation.</p>'
     : msgs.map(m => `
         <div class="chat-msg ${m.senderId === CURRENT_USER.id ? 'sent' : 'received'}">
           <strong>${m.senderName}:</strong> ${m.text}<br>
@@ -913,20 +951,23 @@ document.getElementById('logout-btn').onclick = () => {
 
 // ===== ONLOAD & SYNC =====
 window.addEventListener('load', async () => {
+  // Manual migration button
   document.getElementById('trigger-migrate-btn').onclick = async () => {
     if (confirm('Upload all local data to Cloud? Do this only on your main device!')) {
       await migrateLocalToFirebase();
       sessionStorage.setItem('migrated', 'yes');
     }
   };
-  
+
+  // Auto-migrate once
   if (!sessionStorage.getItem('migrated')) {
     if (confirm('I-upload ba ang lahat ng data sa Cloud? Gawin lang sa pangunahing device!')) {
       await migrateLocalToFirebase();
       sessionStorage.setItem('migrated', 'yes');
     }
   }
-  
+
+  // Real-time sync across all tabs
   fsWatch('data', async () => {
     await renderStores();
     await renderCashiers();
@@ -935,14 +976,16 @@ window.addEventListener('load', async () => {
     await loadCountResults();
     await checkSubscription();
   });
-  
+
+  // Initial load
   await renderStores();
   await renderCashiers();
   await renderProducts();
   await loadRequests();
   await loadCountResults();
   await checkSubscription();
-  
+
+  // Display user info
   document.getElementById('user-info').textContent = `${CURRENT_USER.name || 'Admin'} — Admin / Owner`;
 });
 </script>
