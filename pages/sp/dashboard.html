@@ -3,583 +3,548 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Service Provider — BPOS</title>
+  <title>Service Provider — BPOS Management</title>
   <link rel="stylesheet" href="../../assets/css/style.css">
   <style>
-    /* Online/Offline Status */
-    .status-bar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-    }
-    .status-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-    }
-    .status-online { background: #10b981; }
-    .status-offline { background: #ef4444; animation: pulse 2s infinite; }
-    @keyframes pulse {
-      0% { opacity: 1; }
-      50% { opacity: 0.4; }
-      100% { opacity: 1; }
-    }
-    /* Notification Popup */
-    .notification-popup {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: #dbeafe;
-      border: 2px solid #3b82f6;
-      padding: 15px 20px;
-      border-radius: 8px;
-      z-index: 999;
-      display: none;
-      max-width: 350px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-    .ticket-link {
-      color: #3b82f6;
-      text-decoration: underline;
-      cursor: pointer;
-    }
-    .ticket-modal {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
-      z-index: 1000;
-      max-width: 500px;
-      width: 90%;
-      display: none;
-    }
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.5);
-      z-index: 999;
-      display: none;
-    }
+    .online-indicator{position:fixed;top:10px;right:10px;padding:6px 12px;border-radius:20px;font-weight:bold;font-size:0.85rem;z-index:999;}
+    .online-indicator.online{background:#d4edda;color:#155724;}
+    .online-indicator.offline{background:#f8d7da;color:#721c24;}
+    .tab-content{display:none;}
+    .tab-content.active{display:block;}
+    .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;}
+    .item-card{border:1px solid #ddd;border-radius:8px;padding:12px;margin:8px 0;}
+    .chat-box{border:1px solid #ccc;border-radius:8px;padding:10px;height:300px;overflow-y:auto;background:#fafafa;}
+    .chat-msg{margin:6px 0;padding:8px;border-radius:8px;max-width:75%;}
+    .chat-msg.sent{background:#6f42c1;color:#fff;margin-left:auto;}
+    .chat-msg.received{background:#e9ecef;color:#333;margin-right:auto;}
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;}
+    .modal-box{background:#fff;padding:20px;border-radius:10px;max-width:550px;width:90%;max-height:90vh;overflow-y:auto;}
+    .hidden{display:none !important;}
+    .badge{display:inline-block;padding:3px 8px;border-radius:12px;font-size:0.75rem;font-weight:bold;}
+    .badge.active{background:#d4edda;color:#155724;}
+    .badge.expired{background:#f8d7da;color:#721c24;}
+    .badge.pending{background:#fff3cd;color:#856404;}
+    .system-note{background:#e3f2fd;border-left:4px solid #2196f3;padding:10px;margin:10px 0;}
+    .danger-zone{border:1px solid #dc3545;background:#fff5f5;padding:15px;border-radius:8px;margin-top:20px;}
   </style>
 </head>
 <body>
-  <!-- SP Notification Popup -->
-  <div id="sp-notification" class="notification-popup">
-    <strong>📩 Message from Service Provider:</strong>
-    <p id="sp-notif-text" style="margin:8px 0;"></p>
-    <button onclick="closeSPNotif()" class="btn-primary" style="padding:5px 10px; font-size:13px;">Got it</button>
-  </div>
-
-  <!-- Ticket View Modal -->
-  <div id="ticket-modal-overlay" class="modal-overlay" onclick="closeTicketModal()"></div>
-  <div id="ticket-modal" class="ticket-modal">
-    <h3 id="modal-ticket-title">Ticket Details</h3>
-    <div id="modal-ticket-content"></div>
-    <button onclick="closeTicketModal()" class="btn-secondary" style="margin-top:15px;">Close</button>
-  </div>
+  <!-- Online Status -->
+  <div id="online-indicator" class="online-indicator online">● Online</div>
 
   <div class="sp-container">
     <div class="header">
       <div>
-        <h1>Service Provider Dashboard</h1>
-        <p>System Management & Subscription Control</p>
-        <div class="status-bar">
-          <span class="status-dot" id="net-status-dot"></span>
-          <span id="net-status-text">Checking connection...</span>
-        </div>
+        <h1>🔧 Service Provider Dashboard</h1>
+        <p>System Management & Support</p>
       </div>
       <button id="logout-btn" class="btn-logout">Log Out</button>
     </div>
 
+    <!-- Tabs -->
     <div class="tabs">
-      <button class="tab-btn active" data-tab="subscriptions">Subscriptions</button>
-      <button class="tab-btn" data-tab="passwords">Password Management</button>
-      <button class="tab-btn" data-tab="audit">Audit Logs</button>
-      <button class="tab-btn" data-tab="voids">Void Requests</button>
-      <button class="tab-btn" data-tab="chat">Chat</button>
+      <button class="tab-btn active" data-tab="overview">Overview</button>
+      <button class="tab-btn" data-tab="subscription">Subscriptions</button>
+      <button class="tab-btn" data-tab="admin-access">Admin Accounts</button>
+      <button class="tab-btn" data-tab="sp-messages">Broadcast Messages</button>
+      <button class="tab-btn" data-tab="chat">Direct Chat</button>
+      <button class="tab-btn" data-tab="system-logs">System Logs</button>
     </div>
 
-    <!-- SUBSCRIPTIONS TAB -->
-    <div id="subscriptions" class="tab-content active">
-      <h2>Subscription Management</h2>
-      <p style="margin-bottom:15px;">Manage store subscriptions. Free trial: 7 days.</p>
+    <!-- ========== OVERVIEW ========== -->
+    <div id="overview" class="tab-content active">
+      <h3>System Overview</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:15px 0;">
+        <div class="item-card" style="background:#f0fff4;">
+          <h4>Total Admins</h4>
+          <p style="font-size:1.8rem;font-weight:bold;" id="stat-admins">0</p>
+        </div>
+        <div class="item-card" style="background:#f0f7ff;">
+          <h4>Active Subscriptions</h4>
+          <p style="font-size:1.8rem;font-weight:bold;" id="stat-active-subs">0</p>
+        </div>
+        <div class="item-card" style="background:#fffbf0;">
+          <h4>Expiring Soon</h4>
+          <p style="font-size:1.8rem;font-weight:bold;" id="stat-expiring">0</p>
+        </div>
+        <div class="item-card" style="background:#fafafa;">
+          <h4>Total Cashiers</h4>
+          <p style="font-size:1.8rem;font-weight:bold;" id="stat-cashiers">0</p>
+        </div>
+      </div>
+
+      <h3>Recent Activity</h3>
+      <div id="recent-activity"></div>
+    </div>
+
+    <!-- ========== SUBSCRIPTION MANAGEMENT ========== -->
+    <div id="subscription" class="tab-content">
+      <h3>Manage Subscriptions</h3>
       
       <div class="form-card">
-        <h3>Assign / Update Subscription</h3>
-        <div class="form-row">
-          <label>Select Store:</label>
-          <select id="sub-store" required>
-            <option value="">-- Select Store --</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label>Plan:</label>
-          <select id="sub-plan">
-            <option value="weekly">1 Week — ₱199</option>
-            <option value="biweekly">2 Weeks — ₱325</option>
-            <option value="monthly">1 Month — ₱579</option>
-            <option value="trial">7-Day Free Trial</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label>Activation Date:</label>
-          <input type="date" id="sub-start" required>
-        </div>
-        <button id="assign-sub" class="btn-primary">Assign Subscription</button>
+        <h4>Create / Extend Subscription</h4>
+        <input type="text" id="sub-admin-email" placeholder="Admin Username / Account ID" class="form-input" required>
+        <input type="number" id="sub-duration" placeholder="Days (e.g. 30, 365)" min="1" class="form-input" required>
+        <label style="display:flex;align-items:center;gap:8px;margin:8px 0;">
+          <input type="checkbox" id="sub-force-active"> Force Active (ignore expiry)
+        </label>
+        <button id="create-sub-btn" class="btn-primary">Create / Extend</button>
       </div>
-      <h3>Active Subscriptions</h3>
-      <div id="sub-list"></div>
+
+      <h4 style="margin-top:20px;">All Subscriptions</h4>
+      <div id="subs-list"></div>
     </div>
 
-    <!-- PASSWORD MANAGEMENT TAB -->
-    <div id="passwords" class="tab-content">
-      <h2>Password Controls</h2>
+    <!-- ========== ADMIN ACCESS & PASSWORD ========== -->
+    <div id="admin-access" class="tab-content">
+      <h3>Admin Account Management</h3>
+      <p class="system-note">🔒 Only Service Provider can change Admin master password and grant access.</p>
       
       <div class="form-card">
-        <h3>Change Admin Password</h3>
-        <p style="color:#666; font-size:14px; margin-bottom:10px;">Only Service Provider can change Admin password</p>
-        <div class="form-row">
-          <label>New Admin Password (4 digits):</label>
-          <input type="password" id="new-admin-pass" maxlength="4" pattern="[0-9]{4}" placeholder="e.g. 1234">
-        </div>
-        <button id="update-admin-pass" class="btn-primary">Update Admin Password</button>
+        <h4>Register New Admin Account</h4>
+        <input type="text" id="new-admin-user" placeholder="Admin Username" class="form-input" required>
+        <input type="password" id="new-admin-pass" placeholder="Admin Password" class="form-input" required>
+        <button id="add-admin-btn" class="btn-primary">Create Admin Account</button>
       </div>
+
+      <h4 style="margin-top:20px;">Change Admin Password</h4>
       <div class="form-card">
-        <h3>Change Your Own Password</h3>
-        <p style="color:#666; font-size:14px; margin-bottom:10px;">Only you can change your Service Provider password</p>
-        <div class="form-row">
-          <label>Current Password:</label>
-          <input type="password" id="sp-current-pass">
-        </div>
-        <div class="form-row">
-          <label>New Password:</label>
-          <input type="password" id="new-sp-pass">
-        </div>
-        <div class="form-row">
-          <label>Confirm New Password:</label>
-          <input type="password" id="confirm-sp-pass">
-        </div>
-        <button id="update-sp-pass" class="btn-primary">Update SP Password</button>
-      </div>
-      <h3>Cashier Password Change Log</h3>
-      <div id="cashier-pass-log"></div>
-    </div>
-
-    <!-- AUDIT LOGS TAB -->
-    <div id="audit" class="tab-content">
-      <h2>System Audit Logs</h2>
-      <div id="audit-list"></div>
-    </div>
-
-    <!-- VOID REQUESTS TAB -->
-    <div id="voids" class="tab-content">
-      <h2>Void Requests</h2>
-      <div id="voids-list"></div>
-    </div>
-
-    <!-- CHAT TAB -->
-    <div id="chat" class="tab-content">
-      <h2>Chat Module</h2>
-      <div class="form-row">
-        <label>Chat With:</label>
-        <select id="chat-target">
-          <option value="">-- Select --</option>
+        <select id="admin-to-change" class="form-input">
+          <option value="">— Select Admin —</option>
         </select>
+        <input type="password" id="new-admin-pass-set" placeholder="New Admin Password" class="form-input" required>
+        <button id="change-admin-pass-btn" class="btn-primary">Update Password</button>
       </div>
-      <div id="chat-messages" class="chat-box"></div>
-      <div style="display:flex; gap:10px; margin-top:10px;">
-        <input type="text" id="chat-input" placeholder="Type message..." style="flex:1;">
-        <button id="chat-send" class="btn-primary" style="width:auto; margin:0;">Send</button>
+
+      <h4 style="margin-top:20px;">Admin Accounts List</h4>
+      <div id="admins-list"></div>
+
+      <div class="danger-zone">
+        <h4>⚠️ Danger Zone</h4>
+        <button id="reset-all-btn" class="btn-secondary" style="background:#dc3545;color:#fff;">Reset All Data (Demo Clear)</button>
+        <p style="font-size:0.85rem;margin-top:8px;">Clears all stores, products, sales, and users — for demo reset only</p>
       </div>
-      <p style="font-size:13px; color:#666; margin-top:8px;">💬 Messages are private and synced in real-time when online.</p>
+    </div>
+
+    <!-- ========== BROADCAST MESSAGES ========== -->
+    <div id="sp-messages" class="tab-content">
+      <h3>Send System / Broadcast Messages</h3>
+      <p>Messages will appear as popup notification to selected store or all users.</p>
+      
+      <select id="msg-target-store" class="form-input">
+        <option value="">— All Stores / All Users —</option>
+      </select>
+      <textarea id="sp-msg-textarea" rows="4" placeholder="Enter message..." class="form-input"></textarea>
+      <button id="send-sp-msg" class="btn-primary">Send Message</button>
+
+      <h4 style="margin-top:20px;">Sent Messages</h4>
+      <div id="sp-msg-log"></div>
+    </div>
+
+    <!-- ========== DIRECT CHAT ========== -->
+    <div id="chat" class="tab-content">
+      <h3>Direct Private Chat</h3>
+      <p class="system-note">🔒 Chat with Admin is visible only to you and that Admin. Chat history is isolated per pair.</p>
+      
+      <select id="chat-partner" class="form-input">
+        <option value="">— Select Admin to Chat —</option>
+      </select>
+      <div id="chat-box" class="chat-box" style="margin-top:10px;display:none;"></div>
+      <div style="display:flex;gap:8px;margin-top:10px;display:none;" id="chat-input-area">
+        <input type="text" id="chat-text" placeholder="Type message..." class="form-input" style="flex:1;">
+        <button id="send-chat" class="btn-primary" style="width:auto;">Send</button>
+      </div>
+    </div>
+
+    <!-- ========== SYSTEM LOGS ========== -->
+    <div id="system-logs" class="tab-content">
+      <h3>System Activity Logs</h3>
+      <p style="color:#666;font-size:0.9rem;">Password changes, account creations, and critical actions are recorded here.</p>
+      <div id="full-log" style="margin-top:15px;"></div>
+    </div>
+  </div>
+
+  <!-- ========== MODALS ========== -->
+  <div id="confirm-reset-modal" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <h3>⚠️ Confirm Full System Reset</h3>
+      <p>This will DELETE ALL DATA including stores, products, sales, users, and logs.</p>
+      <p><strong>This cannot be undone!</strong></p>
+      <input type="text" id="reset-confirm-text" placeholder="Type RESET to confirm" class="form-input">
+      <div class="btn-row" style="margin-top:10px;">
+        <button id="confirm-reset-btn" class="btn-primary" style="background:#dc3545;">Yes — Clear Everything</button>
+        <button id="cancel-reset-btn" class="btn-secondary">Cancel</button>
+      </div>
     </div>
   </div>
 
 <script type="module">
 import { requireAuth } from '../../auth/protect.js';
 import { logout } from '../../auth/login.js';
-import { VALID_USERS } from '../../shared/auth-config.js';
 
-const user = requireAuth(['service_provider']);
-if (!user) window.location.href = '../../index.html';
+// ========== AUTH ==========
+const user = requireAuth(['sp']);
+if (!user) window.location.href = '../../auth/login.html';
+const CURRENT_USER = user;
 
-document.getElementById('logout-btn').onclick = logout;
-
-// ==============================================
-// CONNECTION STATUS
-// ==============================================
-function updateConnectionStatus() {
+// ========== ONLINE STATUS ==========
+const indicator = document.getElementById('online-indicator');
+function updateOnlineStatus() {
   const isOnline = navigator.onLine;
-  const dot = document.getElementById('net-status-dot');
-  const text = document.getElementById('net-status-text');
-  if (isOnline) {
-    dot.className = 'status-dot status-online';
-    text.textContent = 'Online — Synced';
-  } else {
-    dot.className = 'status-dot status-offline';
-    text.textContent = 'Offline — Saving locally';
-  }
+  indicator.className = `online-indicator ${isOnline ? 'online' : 'offline'}`;
+  indicator.textContent = isOnline ? '● Online' : '● Offline';
 }
-window.addEventListener('online', updateConnectionStatus);
-window.addEventListener('offline', updateConnectionStatus);
-updateConnectionStatus();
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+updateOnlineStatus();
 
-// ==============================================
-// NOTIFICATION CHECK (SP Messages to others show on their side)
-// ==============================================
-function checkNotifications() {
-  const lastNotif = localStorage.getItem('spLastNotif');
-  const shownTime = localStorage.getItem('spNotifShownTimeSP');
-  if (lastNotif && (!shownTime || lastNotif !== shownTime)) {
-    const notif = JSON.parse(lastNotif);
-    document.getElementById('sp-notif-text').textContent = notif.text;
-    document.getElementById('sp-notification').style.display = 'block';
-    localStorage.setItem('spNotifShownTimeSP', lastNotif);
-  }
+// ========== LOGOUT ==========
+function performLogout() {
+  document.querySelectorAll('input[type="password"]').forEach(el => el.value = '');
+  logout();
 }
-window.closeSPNotif = function() {
-  document.getElementById('sp-notification').style.display = 'none';
-};
-setInterval(checkNotifications, 3000);
-checkNotifications();
-
-// ==============================================
-// TICKET VIEW MODAL
-// ==============================================
-window.viewTicket = function(ticketId) {
-  const sales = JSON.parse(localStorage.getItem('sales') || '[]');
-  const ticket = sales.find(s => s.id === ticketId);
-  const modal = document.getElementById('ticket-modal');
-  const overlay = document.getElementById('ticket-modal-overlay');
-  const content = document.getElementById('modal-ticket-content');
-  
-  if (!ticket) {
-    content.innerHTML = '<p style="color:#ef4444;">❌ Ticket not found or no longer exists.</p>';
-  } else {
-    content.innerHTML = `
-      <p><strong>Ticket:</strong> ${ticket.id}</p>
-      <p><strong>Date/Time:</strong> ${ticket.fullTime}</p>
-      <p><strong>Cashier:</strong> ${ticket.cashierName}</p>
-      <p><strong>Store:</strong> ${ticket.storeId}</p>
-      <p><strong>Method:</strong> ${ticket.method}</p>
-      <p><strong>Total:</strong> ₱${ticket.total.toFixed(2)}</p>
-      <h4>Items:</h4>
-      <ul>${ticket.items.map(i => `<li>${i.name} × ${i.qty} — ₱${(i.price*i.qty).toFixed(2)}</li>`).join('')}</ul>
-    `;
-  }
-  
-  document.getElementById('modal-ticket-title').textContent = `Ticket: ${ticketId}`;
-  modal.style.display = 'block';
-  overlay.style.display = 'block';
+document.getElementById('logout-btn').onclick = () => {
+  if (confirm('Log out?')) performLogout();
 };
 
-window.closeTicketModal = function() {
-  document.getElementById('ticket-modal').style.display = 'none';
-  document.getElementById('ticket-modal-overlay').style.display = 'none';
-};
-
-// ==============================================
-// TABS
-// ==============================================
+// ========== TABS ==========
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.onclick = () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
-    
-    if (btn.dataset.tab === 'subscriptions') loadSubStoreOptions();
-    if (btn.dataset.tab === 'passwords') loadCashierPassLog();
-    if (btn.dataset.tab === 'audit') loadAuditLogs();
-    if (btn.dataset.tab === 'voids') loadVoidRequests();
-    if (btn.dataset.tab === 'chat') loadChatTargets();
+
+    switch(btn.dataset.tab) {
+      case 'overview': loadOverview(); break;
+      case 'subscription': loadSubsList(); break;
+      case 'admin-access': loadAdminsList(); break;
+      case 'sp-messages': populateMsgStores(); loadMsgLog(); break;
+      case 'chat': populateChatAdmins(); break;
+      case 'system-logs': loadSystemLogs(); break;
+    }
   };
 });
 
-// ==============================================
-// SUBSCRIPTIONS
-// ==============================================
-function loadSubStoreOptions() {
-  const stores = JSON.parse(localStorage.getItem('stores') || '[]');
-  const sel = document.getElementById('sub-store');
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">-- Select Store --</option>';
-  stores.forEach(s => {
-    const opt = document.createElement('option');
-    opt.value = s.code;
-    opt.textContent = `${s.code} — ${s.name}`;
-    sel.appendChild(opt);
-  });
-  sel.value = cur;
-  loadSubscriptions();
-}
-
-function getPlanEndDate(startDate, plan) {
-  const start = new Date(startDate);
-  switch (plan) {
-    case 'trial': start.setDate(start.getDate() + 7); break;
-    case 'weekly': start.setDate(start.getDate() + 7); break;
-    case 'biweekly': start.setDate(start.getDate() + 14); break;
-    case 'monthly': start.setDate(start.getDate() + 30); break;
-  }
-  return start.toLocaleDateString();
-}
-
-function loadSubscriptions() {
+// ========== OVERVIEW ==========
+function loadOverview() {
+  const admins = JSON.parse(localStorage.getItem('adminAccounts') || '[]');
   const subs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
-  document.getElementById('sub-list').innerHTML = subs.length === 0
-    ? '<p>No subscriptions yet.</p>'
-    : subs.map((s, i) => {
-        const isExpired = new Date(s.endDate) < new Date();
-        return `<div class="item-card" style="border-left:4px solid ${isExpired ? '#ef4444' : '#10b981'};">
-          <div>
-            <strong>${s.storeId}</strong> — ${s.planName}<br>
-            Start: ${s.startDate} | End: ${s.endDate}<br>
-            Status: ${isExpired ? '❌ Expired' : '✅ Active'}
-          </div>
-          ${!isExpired ? `<button data-i="${i}" class="btn-delete" style="width:auto;">Cancel</button>` : ''}
-        </div>`;
-      }).join('');
+  const cashiers = JSON.parse(localStorage.getItem('cashiers') || '[]');
   
-  document.querySelectorAll('#sub-list .btn-delete').forEach(b => {
-    b.onclick = () => {
-      if (!confirm('Cancel this subscription?')) return;
-      const all = JSON.parse(localStorage.getItem('subscriptions') || '[]');
-      all.splice(parseInt(b.dataset.i), 1);
-      localStorage.setItem('subscriptions', JSON.stringify(all));
-      loadSubscriptions();
-      addAudit('Subscription Cancelled', `Store: ${all[parseInt(b.dataset.i)]?.storeId}`);
+  const activeSubs = subs.filter(s => new Date(s.expiryAt) > new Date());
+  const expiring = subs.filter(s => {
+    const expiry = new Date(s.expiryAt);
+    const daysLeft = (expiry - new Date()) / (1000*60*60*24);
+    return daysLeft > 0 && daysLeft <= 7;
+  });
+
+  document.getElementById('stat-admins').textContent = admins.length;
+  document.getElementById('stat-active-subs').textContent = activeSubs.length;
+  document.getElementById('stat-expiring').textContent = expiring.length;
+  document.getElementById('stat-cashiers').textContent = cashiers.length;
+
+  // Recent activity
+  const logs = JSON.parse(localStorage.getItem('systemActivityLog') || '[]').slice(-15).reverse();
+  document.getElementById('recent-activity').innerHTML = logs.length === 0
+    ? '<p>No recent activity.</p>'
+    : logs.map(l => `
+        <div class="item-card" style="padding:8px;">
+          <small>${new Date(l.timestamp).toLocaleString()}</small> — 
+          <strong>${l.action}</strong> ${l.details ? `: ${l.details}` : ''}
+        </div>
+      `).join('');
+}
+
+// ========== SUBSCRIPTION MANAGEMENT ==========
+function loadSubsList() {
+  const subs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
+  const stores = JSON.parse(localStorage.getItem('stores') || '[]');
+  
+  document.getElementById('subs-list').innerHTML = subs.length === 0
+    ? '<p>No subscriptions created.</p>'
+    : subs.map(s => {
+        const isActive = new Date(s.expiryAt) > new Date() || s.forceActive;
+        const daysLeft = Math.ceil((new Date(s.expiryAt) - new Date()) / (1000*60*60*24));
+        return `
+          <div class="item-card">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <div>
+                <strong>${s.adminUsername || s.adminId}</strong>
+                <span class="badge ${isActive ? 'active' : 'expired'}">${isActive ? 'Active' : 'Expired'}</span>
+                ${s.forceActive ? '<span class="badge pending">Forced</span>' : ''}<br>
+                Expires: ${new Date(s.expiryAt).toLocaleString()}<br>
+                Days Left: ${daysLeft > 0 ? daysLeft : 0} days
+              </div>
+              <button data-sid="${s.id}" class="btn-secondary extend-btn">+ Extend 30d</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+  // Extend handlers
+  document.querySelectorAll('.extend-btn').forEach(btn => {
+    btn.onclick = () => {
+      const subs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
+      const idx = subs.findIndex(s => s.id === btn.dataset.sid);
+      if (idx === -1) return;
+      subs[idx].expiryAt = new Date(new Date(subs[idx].expiryAt).getTime() + 30*24*60*60*1000).toISOString();
+      localStorage.setItem('subscriptions', JSON.stringify(subs));
+      logAction('Subscription Extended', `Admin: ${subs[idx].adminUsername}, New Expiry: ${subs[idx].expiryAt}`);
+      alert('Extended by 30 days ✅');
+      loadSubsList();
     };
   });
 }
+document.getElementById('create-sub-btn').onclick = () => {
+  const adminId = document.getElementById('sub-admin-email').value.trim();
+  const days = parseInt(document.getElementById('sub-duration').value);
+  const forceActive = document.getElementById('sub-force-active').checked;
+  
+  if (!adminId || !days || days < 1) return alert('Fill valid fields.');
 
-document.getElementById('assign-sub').onclick = e => {
-  e.preventDefault?.();
-  const storeId = document.getElementById('sub-store').value;
-  const plan = document.getElementById('sub-plan').value;
-  const startDate = document.getElementById('sub-start').value;
-  
-  if (!storeId || !startDate) return alert('Fill in all fields!');
-  
-  const planNames = {
-    trial: '7-Day Free Trial',
-    weekly: '1 Week — ₱199',
-    biweekly: '2 Weeks — ₱325',
-    monthly: '1 Month — ₱579'
-  };
-  
+  const expiry = new Date();
+  expiry.setDate(expiry.getDate() + days);
+
   const subs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
-  subs.push({
-    storeId,
-    plan,
-    planName: planNames[plan],
-    startDate: new Date(startDate).toLocaleDateString(),
-    endDate: getPlanEndDate(startDate, plan),
-    assignedBy: user.name,
-    assignedAt: new Date().toLocaleString()
-  });
-  
+  // Replace existing for same admin
+  const existingIdx = subs.findIndex(s => s.adminId === adminId || s.adminUsername === adminId);
+  const subRec = {
+    id: `sub-${Date.now()}`,
+    adminId,
+    adminUsername: adminId,
+    expiryAt: expiry.toISOString(),
+    forceActive,
+    createdAt: new Date().toISOString(),
+    createdBy: 'SP'
+  };
+
+  if (existingIdx >= 0) subs[existingIdx] = subRec;
+  else subs.push(subRec);
+
   localStorage.setItem('subscriptions', JSON.stringify(subs));
-  addAudit('Subscription Assigned', `Store: ${storeId}, Plan: ${planNames[plan]}`);
-  alert('Subscription assigned! ✅');
-  document.getElementById('sub-start').value = '';
-  loadSubscriptions();
+  logAction('Subscription Created/Extended', `Admin: ${adminId}, ${days} days, Expiry: ${expiry.toLocaleDateString()}`);
+  
+  alert('Subscription saved ✅');
+  document.getElementById('sub-admin-email').value = '';
+  document.getElementById('sub-duration').value = '';
+  loadSubsList();
 };
 
-// ==============================================
-// PASSWORD MANAGEMENT
-// ==============================================
-document.getElementById('update-admin-pass').onclick = () => {
-  const newPass = document.getElementById('new-admin-pass').value.trim();
-  if (!/^\d{4}$/.test(newPass)) return alert('Admin password must be exactly 4 digits!');
+// ========== ADMIN ACCOUNTS ==========
+function loadAdminsList() {
+  const admins = JSON.parse(localStorage.getItem('adminAccounts') || '[]');
   
-  const adminIdx = VALID_USERS.findIndex(u => u.role === 'admin');
-  if (adminIdx !== -1) {
-    const oldPass = VALID_USERS[adminIdx].password;
-    VALID_USERS[adminIdx].password = newPass;
-    localStorage.setItem('VALID_USERS', JSON.stringify(VALID_USERS));
-    
-    addAudit('Admin Password Changed', `Old: ${oldPass} → New: ${newPass}`);
-    alert('Admin password updated! ✅');
-    document.getElementById('new-admin-pass').value = '';
+  // Populate selectors
+  document.getElementById('admin-to-change').innerHTML = '<option value="">— Select Admin —</option>' +
+    admins.map(a => `<option value="${a.id}">${a.username}</option>`).join('');
+
+  document.getElementById('admins-list').innerHTML = admins.length === 0
+    ? '<p>No admin accounts registered.</p>'
+    : admins.map(a => `
+        <div class="item-card">
+          <strong>${a.username}</strong><br>
+          Created: ${a.createdAt ? new Date(a.createdAt).toLocaleString() : '—'}
+        </div>
+      `).join('');
+}
+document.getElementById('add-admin-btn').onclick = () => {
+  const user = document.getElementById('new-admin-user').value.trim();
+  const pass = document.getElementById('new-admin-pass').value.trim();
+  
+  if (!user || !pass) return alert('Fill username and password.');
+  
+  const admins = JSON.parse(localStorage.getItem('adminAccounts') || '[]');
+  if (admins.find(a => a.username === user)) return alert('Username exists.');
+  
+  admins.push({
+    id: `admin-${Date.now()}`,
+    username: user,
+    password: pass,
+    createdAt: new Date().toISOString()
+  });
+  localStorage.setItem('adminAccounts', JSON.stringify(admins));
+  logAction('Admin Account Created', `Username: ${user}`);
+  
+  alert('Admin account created ✅');
+  document.getElementById('new-admin-user').value = '';
+  document.getElementById('new-admin-pass').value = '';
+  loadAdminsList();
+};
+document.getElementById('change-admin-pass-btn').onclick = () => {
+  const adminId = document.getElementById('admin-to-change').value;
+  const newPass = document.getElementById('new-admin-pass-set').value.trim();
+  
+  if (!adminId || !newPass) return alert('Select admin and enter new password.');
+  
+  const admins = JSON.parse(localStorage.getItem('adminAccounts') || '[]');
+  const idx = admins.findIndex(a => a.id === adminId);
+  if (idx === -1) return alert('Admin not found.');
+  
+  const oldPass = admins[idx].password;
+  admins[idx].password = newPass;
+  localStorage.setItem('adminAccounts', JSON.stringify(admins));
+  
+  logAction('Admin Password Changed', `Username: ${admins[idx].username}, changed by SP`);
+  
+  alert('Password updated ✅');
+  document.getElementById('new-admin-pass-set').value = '';
+  loadAdminsList();
+};
+
+// Full Reset
+document.getElementById('reset-all-btn').onclick = () => {
+  document.getElementById('confirm-reset-modal').classList.remove('hidden');
+};
+document.getElementById('cancel-reset-btn').onclick = () => {
+  document.getElementById('confirm-reset-modal').classList.add('hidden');
+  document.getElementById('reset-confirm-text').value = '';
+};
+document.getElementById('confirm-reset-btn').onclick = () => {
+  if (document.getElementById('reset-confirm-text').value !== 'RESET') {
+    return alert('Type RESET exactly to confirm.');
   }
+  
+  if (!confirm('FINAL CONFIRM — Delete ALL data?')) return;
+  
+  localStorage.clear();
+  logAction('SYSTEM FULL RESET', 'All data cleared by Service Provider');
+  alert('System cleared ✅ Refresh page.');
+  document.getElementById('confirm-reset-modal').classList.add('hidden');
+  document.getElementById('reset-confirm-text').value = '';
+  loadOverview();
+  loadAdminsList();
 };
 
-document.getElementById('update-sp-pass').onclick = () => {
-  const current = document.getElementById('sp-current-pass').value.trim();
-  const newPass = document.getElementById('new-sp-pass').value.trim();
-  const confirmPass = document.getElementById('confirm-sp-pass').value.trim();
+// ========== BROADCAST MESSAGES ==========
+function populateMsgStores() {
+  const stores = JSON.parse(localStorage.getItem('stores') || '[]');
+  document.getElementById('msg-target-store').innerHTML =
+    '<option value="">— All Stores / All Users —</option>' +
+    stores.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+}
+document.getElementById('send-sp-msg').onclick = () => {
+  const text = document.getElementById('sp-msg-textarea').value.trim();
+  const targetStore = document.getElementById('msg-target-store').value || null;
   
-  const spIdx = VALID_USERS.findIndex(u => u.role === 'service_provider');
-  if (spIdx === -1 || VALID_USERS[spIdx].password !== current) {
-    return alert('Current password is incorrect!');
-  }
-  if (newPass !== confirmPass) return alert('New passwords do not match!');
-  if (!newPass || newPass.length < 6) return alert('New password is too short!');
+  if (!text) return alert('Enter message.');
   
-  VALID_USERS[spIdx].password = newPass;
-  localStorage.setItem('VALID_USERS', JSON.stringify(VALID_USERS));
+  const msgs = JSON.parse(localStorage.getItem('spMessages') || '[]');
+  msgs.push({
+    id: `spmsg-${Date.now()}`,
+    text,
+    targetStore,
+    sentAt: new Date().toISOString(),
+    sentBy: 'SP'
+  });
+  localStorage.setItem('spMessages', JSON.stringify(msgs));
   
-  addAudit('SP Password Changed', 'Self-update');
-  alert('Service Provider password updated! ✅');
-  document.getElementById('sp-current-pass').value = '';
-  document.getElementById('new-sp-pass').value = '';
-  document.getElementById('confirm-sp-pass').value = '';
+  logAction('SP Broadcast Sent', targetStore ? `Store: ${targetStore}` : 'Sent to ALL');
+  
+  alert('Message sent ✅ Will appear as popup.');
+  document.getElementById('sp-msg-textarea').value = '';
+  loadMsgLog();
 };
-
-function loadCashierPassLog() {
-  const log = JSON.parse(localStorage.getItem('cashierPassChanges') || '[]');
-  document.getElementById('cashier-pass-log').innerHTML = log.length === 0
-    ? '<p>No password changes recorded.</p>'
-    : log.map(entry => `<div class="item-card">
-        <strong>${entry.cashierName}</strong><br>
-        Store: ${entry.storeId}<br>
-        Old: ${entry.oldPass} → New: ${entry.newPass}<br>
-        Changed by: ${entry.changedBy} — ${entry.time}
-      </div>`).join('');
+function loadMsgLog() {
+  const msgs = JSON.parse(localStorage.getItem('spMessages') || '[]').reverse();
+  document.getElementById('sp-msg-log').innerHTML = msgs.length === 0
+    ? '<p>No messages sent.</p>'
+    : msgs.map(m => `
+        <div class="item-card">
+          <p>${m.text}</p>
+          <small>
+            ${new Date(m.sentAt).toLocaleString()} — 
+            ${m.targetStore ? 'Specific Store' : 'All Users'}
+          </small>
+        </div>
+      `).join('');
 }
 
-// ==============================================
-// AUDIT LOGS
-// ==============================================
-function addAudit(action, details) {
-  const logs = JSON.parse(localStorage.getItem('spAuditLogs') || '[]');
-  logs.unshift({
+// ========== DIRECT CHAT ==========
+let CHAT_PARTNER = null;
+function populateChatAdmins() {
+  const admins = JSON.parse(localStorage.getItem('adminAccounts') || '[]');
+  document.getElementById('chat-partner').innerHTML =
+    '<option value="">— Select Admin —</option>' +
+    admins.map(a => `<option value="${a.id}">${a.username}</option>`).join('');
+}
+document.getElementById('chat-partner').onchange = e => {
+  CHAT_PARTNER = e.target.value || null;
+  document.getElementById('chat-box').style.display = CHAT_PARTNER ? 'block' : 'none';
+  document.getElementById('chat-input-area').style.display = CHAT_PARTNER ? 'flex' : 'none';
+  if (CHAT_PARTNER) loadChatMessages();
+};
+function loadChatMessages() {
+  if (!CHAT_PARTNER) return;
+  const convKey = `chat_sp_admin_${CHAT_PARTNER}`;
+  const messages = JSON.parse(localStorage.getItem(convKey) || '[]');
+  
+  const box = document.getElementById('chat-box');
+  box.innerHTML = messages.length === 0
+    ? '<p style="color:#888;">No messages yet.</p>'
+    : messages.map(m => `
+        <div class="chat-msg ${m.senderId === 'sp' ? 'sent' : 'received'}">
+          <strong>${m.senderName}:</strong> ${m.text}<br>
+          <small style="opacity:0.7;">${new Date(m.time).toLocaleTimeString()}</small>
+        </div>
+      `).join('');
+  box.scrollTop = box.scrollHeight;
+}
+document.getElementById('send-chat').onclick = () => {
+  if (!CHAT_PARTNER) return;
+  const text = document.getElementById('chat-text').value.trim();
+  if (!text) return;
+  
+  const convKey = `chat_sp_admin_${CHAT_PARTNER}`;
+  const messages = JSON.parse(localStorage.getItem(convKey) || '[]');
+  messages.push({
+    senderId: 'sp',
+    senderName: 'Service Provider',
+    text,
+    time: new Date().toISOString()
+  });
+  localStorage.setItem(convKey, JSON.stringify(messages));
+  
+  // Mirror for Admin's view
+  const partnerKey = `chat_admin_sp`;
+  const partnerMsgs = JSON.parse(localStorage.getItem(partnerKey) || '[]');
+  partnerMsgs.push({
+    senderId: 'sp',
+    senderName: 'Service Provider',
+    text,
+    time: new Date().toISOString()
+  });
+  localStorage.setItem(partnerKey, JSON.stringify(partnerMsgs));
+  
+  document.getElementById('chat-text').value = '';
+  loadChatMessages();
+};
+
+// ========== SYSTEM LOGGING ==========
+function logAction(action, details='') {
+  const logs = JSON.parse(localStorage.getItem('systemActivityLog') || '[]');
+  logs.push({
     action,
     details,
-    by: user.name,
-    time: new Date().toLocaleString()
+    spId: CURRENT_USER.id || 'sp-main',
+    timestamp: new Date().toISOString()
   });
-  localStorage.setItem('spAuditLogs', JSON.stringify(logs));
+  localStorage.setItem('systemActivityLog', JSON.stringify(logs));
+}
+function loadSystemLogs() {
+  const logs = JSON.parse(localStorage.getItem('systemActivityLog') || '[]').reverse();
+  document.getElementById('full-log').innerHTML = logs.length === 0
+    ? '<p>No system logs.</p>'
+    : logs.map(l => `
+        <div class="item-card" style="padding:8px;font-family:monospace;font-size:0.9rem;">
+          <strong>${new Date(l.timestamp).toLocaleString()}</strong><br>
+          Action: ${l.action}${l.details ? `<br>Details: ${l.details}` : ''}
+        </div>
+      `).join('');
 }
 
-function loadAuditLogs() {
-  const logs = JSON.parse(localStorage.getItem('spAuditLogs') || '[]');
-  document.getElementById('audit-list').innerHTML = logs.length === 0
-    ? '<p>No system activity recorded.</p>'
-    : logs.map(l => `<div class="item-card">
-        <strong>${l.action}</strong><br>
-        ${l.details}<br>
-        <small>By: ${l.by} — ${l.time}</small>
-      </div>`).join('');
-}
-
-// ==============================================
-// VOID REQUESTS — with Ticket View Links
-// ==============================================
-function loadVoidRequests() {
-  const voids = JSON.parse(localStorage.getItem('voidRequests') || '[]');
-  document.getElementById('voids-list').innerHTML = voids.length === 0 
-    ? '<p>No void requests.</p>'
-    : voids.map((v, i) => `<div class="form-card">
-        <p><strong>From:</strong> ${v.fromName} (${v.storeId})</p>
-        <p><strong>Type:</strong> ${v.type === 'ticket' ? 'Void Transaction' : 'Product Out'}</p>
-        <p><strong>Reason:</strong> ${v.reason}</p>
-        ${v.type === 'ticket' ? `
-          <p>Wrong Ticket: 
-            <span class="ticket-link" onclick="viewTicket('${v.wrongTicket}')">${v.wrongTicket}</span>
-          </p>
-          ${v.correctTicket && v.correctTicket !== 'N/A' ? `
-            <p>Correct Ticket: 
-              <span class="ticket-link" onclick="viewTicket('${v.correctTicket}')">${v.correctTicket}</span>
-            </p>` : ''}
-        ` : `
-          <p>Product: ${v.productName || 'N/A'} × Qty: ${v.qty || 1}</p>
-        `}
-        <p><strong>Status:</strong> ${v.status}</p>
-        ${v.status === 'pending' ? `
-          <button data-i="${i}" data-s="approve" class="btn-success" style="width:auto;margin:5px 5px 5px 0;">Approve</button>
-          <button data-i="${i}" data-s="reject" class="btn-delete" style="width:auto;margin:5px 0;">Reject</button>
-        ` : ''}
-        <p><small>Submitted: ${v.time}</small></p>
-      </div>`).join('');
-
-  document.querySelectorAll('#voids-list button').forEach(b => {
-    b.onclick = () => {
-      const all = JSON.parse(localStorage.getItem('voidRequests') || '[]');
-      all[parseInt(b.dataset.i)].status = b.dataset.s === 'approve' ? 'approved' : 'rejected';
-      localStorage.setItem('voidRequests', JSON.stringify(all));
-      loadVoidRequests();
-      addAudit(`Void Request ${b.dataset.s}d`, `From: ${all[parseInt(b.dataset.i)]?.fromName}`);
-    };
-  });
-}
-
-// ==============================================
-// CHAT — FIXED: Proper Sync + Notification
-// ==============================================
-function loadChatTargets() {
-  const sel = document.getElementById('chat-target');
-  sel.innerHTML = '<option value="">-- Select --</option><option value="admin">Admin / Owner</option>';
-  const cashiers = JSON.parse(localStorage.getItem('cashiers') || '[]');
-  cashiers.forEach(c => {
-    const opt = document.createElement('option');
-    opt.value = `cashier_${c.id}`;
-    opt.textContent = `${c.fname} ${c.lname || ''} (Cashier — ${c.storeId})`;
-    sel.appendChild(opt);
-  });
-}
-
-function loadChat() {
-  const target = document.getElementById('chat-target').value;
-  if (!target) {
-    document.getElementById('chat-messages').innerHTML = '<p>Select who to chat with.</p>';
-    return;
-  }
-  const convos = JSON.parse(localStorage.getItem('chats') || '{}');
-  const key = target === 'admin' ? `sp_admin` : `sp_${target}`;
-  const msgs = convos[key] || [];
-  document.getElementById('chat-messages').innerHTML = msgs.map(m => `<div class="chat-msg ${m.from === 'sp' ? 'sent' : 'received'}">
-    <strong>${m.fromName}:</strong> ${m.text}<br>
-    <small>${m.time}</small>
-  </div>`).join('') || '<p>No messages yet.</p>';
-  document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
-}
-
-document.getElementById('chat-target').onchange = loadChat;
-
-document.getElementById('chat-send').onclick = () => {
-  const target = document.getElementById('chat-target').value;
-  const text = document.getElementById('chat-input').value.trim();
-  if (!target || !text) return;
-  
-  const convos = JSON.parse(localStorage.getItem('chats') || '{}');
-  const key = target === 'admin' ? 'sp_admin' : `sp_${target}`;
-  const reverseKey = target === 'admin' ? 'admin_sp' : `${target}_sp`;
-  
-  if (!convos[key]) convos[key] = [];
-  convos[key].push({
-    from: 'sp',
-    fromName: user.name,
-    text,
-    time: new Date().toLocaleString()
-  });
-  if (!convos[reverseKey]) convos[reverseKey] = [];
-  convos[reverseKey].push({
-    from: 'sp',
-    fromName: user.name,
-    text,
-    time: new Date().toLocaleString()
-  });
-  
-  localStorage.setItem('chats', JSON.stringify(convos));
-  
-  // Trigger notification for recipient (e.g. "Pahiram po muna ng POS...")
-  localStorage.setItem('spLastNotif', JSON.stringify({ text, from: user.name, time: Date.now() }));
-  
-  document.getElementById('chat-input').value = '';
-  loadChat();
-  addAudit('Message Sent', `To: ${target}`);
-};
-
-// Initialize
-loadSubStoreOptions();
-loadVoidRequests();
+// ========== INITIAL LOAD ==========
+loadOverview();
 </script>
 </body>
 </html>
