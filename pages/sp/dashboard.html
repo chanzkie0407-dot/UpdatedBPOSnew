@@ -7,16 +7,363 @@
   <link rel="stylesheet" href="../../assets/css/style.css">
 </head>
 <body>
-  <div class="login-container" style="max-width:500px; margin-top:80px;">
-    <h1>Service Provider Dashboard</h1>
-    <p style="margin:20px 0;">Full system management and subscription controls.</p>
-    <button id="logout-btn" class="btn-logout" style="width:100%;">Log Out</button>
+  <div class="sp-container">
+    <div class="header">
+      <div>
+        <h1>Service Provider Dashboard</h1>
+        <p>System Management & Subscription Control</p>
+      </div>
+      <button id="logout-btn" class="btn-logout">Log Out</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="subscriptions">Subscriptions</button>
+      <button class="tab-btn" data-tab="passwords">Password Management</button>
+      <button class="tab-btn" data-tab="audit">Audit Logs</button>
+      <button class="tab-btn" data-tab="chat">Chat</button>
+    </div>
+
+    <!-- SUBSCRIPTIONS TAB -->
+    <div id="subscriptions" class="tab-content active">
+      <h2>Subscription Management</h2>
+      <p style="margin-bottom:15px;">Manage store subscriptions. Free trial: 7 days.</p>
+      
+      <div class="form-card">
+        <h3>Assign / Update Subscription</h3>
+        <div class="form-row">
+          <label>Select Store:</label>
+          <select id="sub-store" required>
+            <option value="">-- Select Store --</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Plan:</label>
+          <select id="sub-plan">
+            <option value="weekly">1 Week — ₱199</option>
+            <option value="biweekly">2 Weeks — ₱325</option>
+            <option value="monthly">1 Month — ₱579</option>
+            <option value="trial">7-Day Free Trial</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Activation Date:</label>
+          <input type="date" id="sub-start" required>
+        </div>
+        <button id="assign-sub" class="btn-primary">Assign Subscription</button>
+      </div>
+
+      <h3>Active Subscriptions</h3>
+      <div id="sub-list"></div>
+    </div>
+
+    <!-- PASSWORD MANAGEMENT TAB -->
+    <div id="passwords" class="tab-content">
+      <h2>Password Controls</h2>
+      
+      <div class="form-card">
+        <h3>Change Admin Password</h3>
+        <p style="color:#666; font-size:14px; margin-bottom:10px;">Only Service Provider can change Admin password</p>
+        <div class="form-row">
+          <label>New Admin Password (4 digits):</label>
+          <input type="password" id="new-admin-pass" maxlength="4" pattern="[0-9]{4}" placeholder="e.g. 1234">
+        </div>
+        <button id="update-admin-pass" class="btn-primary">Update Admin Password</button>
+      </div>
+
+      <div class="form-card">
+        <h3>Change Your Own Password</h3>
+        <p style="color:#666; font-size:14px; margin-bottom:10px;">Only you can change your Service Provider password</p>
+        <div class="form-row">
+          <label>Current Password:</label>
+          <input type="password" id="sp-current-pass">
+        </div>
+        <div class="form-row">
+          <label>New Password:</label>
+          <input type="password" id="new-sp-pass">
+        </div>
+        <div class="form-row">
+          <label>Confirm New Password:</label>
+          <input type="password" id="confirm-sp-pass">
+        </div>
+        <button id="update-sp-pass" class="btn-primary">Update SP Password</button>
+      </div>
+
+      <h3>Cashier Password Change Log</h3>
+      <div id="cashier-pass-log"></div>
+    </div>
+
+    <!-- AUDIT LOGS TAB -->
+    <div id="audit" class="tab-content">
+      <h2>System Audit Logs</h2>
+      <div id="audit-list"></div>
+    </div>
+
+    <!-- CHAT TAB -->
+    <div id="chat" class="tab-content">
+      <h2>Chat Module</h2>
+      <div class="form-row">
+        <label>Chat With:</label>
+        <select id="chat-target">
+          <option value="">-- Select --</option>
+        </select>
+      </div>
+      <div id="chat-messages" class="chat-box"></div>
+      <div style="display:flex; gap:10px; margin-top:10px;">
+        <input type="text" id="chat-input" placeholder="Type message..." style="flex:1;">
+        <button id="chat-send" class="btn-primary" style="width:auto; margin:0;">Send</button>
+      </div>
+    </div>
   </div>
+
 <script type="module">
 import { requireAuth } from '../../auth/protect.js';
 import { logout } from '../../auth/login.js';
-requireAuth(['service_provider']);
+import { VALID_USERS } from '../../shared/auth-config.js';
+
+const user = requireAuth(['service_provider']);
+if (!user) {}
+
 document.getElementById('logout-btn').onclick = logout;
+
+// ========== TABS ==========
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+    
+    if (btn.dataset.tab === 'subscriptions') loadSubStoreOptions();
+    if (btn.dataset.tab === 'passwords') loadCashierPassLog();
+    if (btn.dataset.tab === 'audit') loadAuditLogs();
+    if (btn.dataset.tab === 'chat') loadChatTargets();
+  };
+});
+
+// ========== SUBSCRIPTIONS ==========
+function loadSubStoreOptions() {
+  const stores = JSON.parse(localStorage.getItem('stores') || '[]');
+  const sel = document.getElementById('sub-store');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">-- Select Store --</option>';
+  stores.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.code;
+    opt.textContent = `${s.code} — ${s.name}`;
+    sel.appendChild(opt);
+  });
+  sel.value = cur;
+  loadSubscriptions();
+}
+
+function getPlanEndDate(startDate, plan) {
+  const start = new Date(startDate);
+  switch (plan) {
+    case 'trial': start.setDate(start.getDate() + 7); break;
+    case 'weekly': start.setDate(start.getDate() + 7); break;
+    case 'biweekly': start.setDate(start.getDate() + 14); break;
+    case 'monthly': start.setDate(start.getDate() + 30); break;
+  }
+  return start.toLocaleDateString();
+}
+
+function loadSubscriptions() {
+  const subs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
+  document.getElementById('sub-list').innerHTML = subs.length === 0
+    ? '<p>No subscriptions yet.</p>'
+    : subs.map((s, i) => {
+        const isExpired = new Date(s.endDate) < new Date();
+        return `<div class="item-card" style="border-left:4px solid ${isExpired ? '#ef4444' : '#10b981'};">
+          <div>
+            <strong>${s.storeId}</strong> — ${s.planName}<br>
+            Start: ${s.startDate} | End: ${s.endDate}<br>
+            Status: ${isExpired ? '❌ Expired' : '✅ Active'}
+          </div>
+          ${!isExpired ? `<button data-i="${i}" class="btn-delete" style="width:auto;">Cancel</button>` : ''}
+        </div>`;
+      }).join('');
+  
+  document.querySelectorAll('#sub-list .btn-delete').forEach(b => {
+    b.onclick = () => {
+      if (!confirm('Cancel this subscription?')) return;
+      const all = JSON.parse(localStorage.getItem('subscriptions') || '[]');
+      all.splice(parseInt(b.dataset.i), 1);
+      localStorage.setItem('subscriptions', JSON.stringify(all));
+      loadSubscriptions();
+      addAudit('Subscription Cancelled', `Store: ${all[parseInt(b.dataset.i)]?.storeId}`);
+    };
+  });
+}
+
+document.getElementById('assign-sub').onsubmit = document.getElementById('assign-sub').onclick = e => {
+  e.preventDefault?.();
+  const storeId = document.getElementById('sub-store').value;
+  const plan = document.getElementById('sub-plan').value;
+  const startDate = document.getElementById('sub-start').value;
+  
+  if (!storeId || !startDate) return alert('Fill in all fields!');
+  
+  const planNames = {
+    trial: '7-Day Free Trial',
+    weekly: '1 Week — ₱199',
+    biweekly: '2 Weeks — ₱325',
+    monthly: '1 Month — ₱579'
+  };
+  
+  const subs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
+  subs.push({
+    storeId,
+    plan,
+    planName: planNames[plan],
+    startDate: new Date(startDate).toLocaleDateString(),
+    endDate: getPlanEndDate(startDate, plan),
+    assignedBy: user.name,
+    assignedAt: new Date().toLocaleString()
+  });
+  
+  localStorage.setItem('subscriptions', JSON.stringify(subs));
+  addAudit('Subscription Assigned', `Store: ${storeId}, Plan: ${planNames[plan]}`);
+  alert('Subscription assigned! ✅');
+  document.getElementById('sub-start').value = '';
+  loadSubscriptions();
+};
+
+// ========== PASSWORD MANAGEMENT ==========
+document.getElementById('update-admin-pass').onclick = () => {
+  const newPass = document.getElementById('new-admin-pass').value.trim();
+  if (!/^\d{4}$/.test(newPass)) return alert('Admin password must be exactly 4 digits!');
+  
+  const adminIdx = VALID_USERS.findIndex(u => u.role === 'admin');
+  if (adminIdx !== -1) {
+    const oldPass = VALID_USERS[adminIdx].password;
+    VALID_USERS[adminIdx].password = newPass;
+    localStorage.setItem('VALID_USERS', JSON.stringify(VALID_USERS));
+    
+    addAudit('Admin Password Changed', `Old: ${oldPass} → New: ${newPass}`);
+    alert('Admin password updated! ✅');
+    document.getElementById('new-admin-pass').value = '';
+  }
+};
+
+document.getElementById('update-sp-pass').onclick = () => {
+  const current = document.getElementById('sp-current-pass').value.trim();
+  const newPass = document.getElementById('new-sp-pass').value.trim();
+  const confirmPass = document.getElementById('confirm-sp-pass').value.trim();
+  
+  const spIdx = VALID_USERS.findIndex(u => u.role === 'service_provider');
+  if (spIdx === -1 || VALID_USERS[spIdx].password !== current) {
+    return alert('Current password is incorrect!');
+  }
+  if (newPass !== confirmPass) return alert('New passwords do not match!');
+  if (!newPass || newPass.length < 6) return alert('New password is too short!');
+  
+  VALID_USERS[spIdx].password = newPass;
+  localStorage.setItem('VALID_USERS', JSON.stringify(VALID_USERS));
+  
+  addAudit('SP Password Changed', 'Self-update');
+  alert('Service Provider password updated! ✅');
+  document.getElementById('sp-current-pass').value = '';
+  document.getElementById('new-sp-pass').value = '';
+  document.getElementById('confirm-sp-pass').value = '';
+};
+
+function loadCashierPassLog() {
+  const log = JSON.parse(localStorage.getItem('cashierPassChanges') || '[]');
+  document.getElementById('cashier-pass-log').innerHTML = log.length === 0
+    ? '<p>No password changes recorded.</p>'
+    : log.map(entry => `<div class="item-card">
+        <strong>${entry.cashierName}</strong><br>
+        Store: ${entry.storeId}<br>
+        Old: ${entry.oldPass} → New: ${entry.newPass}<br>
+        Changed by: ${entry.changedBy} — ${entry.time}
+      </div>`).join('');
+}
+
+// ========== AUDIT LOGS ==========
+function addAudit(action, details) {
+  const logs = JSON.parse(localStorage.getItem('spAuditLogs') || '[]');
+  logs.unshift({
+    action,
+    details,
+    by: user.name,
+    time: new Date().toLocaleString()
+  });
+  localStorage.setItem('spAuditLogs', JSON.stringify(logs));
+}
+
+function loadAuditLogs() {
+  const logs = JSON.parse(localStorage.getItem('spAuditLogs') || '[]');
+  document.getElementById('audit-list').innerHTML = logs.length === 0
+    ? '<p>No system activity recorded.</p>'
+    : logs.map(l => `<div class="item-card">
+        <strong>${l.action}</strong><br>
+        ${l.details}<br>
+        <small>By: ${l.by} — ${l.time}</small>
+      </div>`).join('');
+}
+
+// ========== CHAT (SP ↔ Cashier / SP ↔ Admin — PRIVATE) ==========
+function loadChatTargets() {
+  const sel = document.getElementById('chat-target');
+  sel.innerHTML = '<option value="">-- Select --</option><option value="admin">Admin / Owner</option>';
+  const cashiers = JSON.parse(localStorage.getItem('cashiers') || '[]');
+  cashiers.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = `cashier_${c.id}`;
+    opt.textContent = `${c.fname} ${c.lname || ''} (Cashier — ${c.storeId})`;
+    sel.appendChild(opt);
+  });
+}
+
+function loadChat() {
+  const target = document.getElementById('chat-target').value;
+  if (!target) {
+    document.getElementById('chat-messages').innerHTML = '<p>Select who to chat with.</p>';
+    return;
+  }
+  const convos = JSON.parse(localStorage.getItem('chats') || '{}');
+  const key = target === 'admin' ? `sp_admin` : `sp_${target}`;
+  const msgs = convos[key] || [];
+  document.getElementById('chat-messages').innerHTML = msgs.map(m => `<div class="chat-msg ${m.from === 'sp' ? 'sent' : 'received'}">
+    <strong>${m.fromName}:</strong> ${m.text}<br>
+    <small>${m.time}</small>
+  </div>`).join('') || '<p>No messages yet.</p>';
+  document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
+}
+
+document.getElementById('chat-target').onchange = loadChat;
+
+document.getElementById('chat-send').onclick = () => {
+  const target = document.getElementById('chat-target').value;
+  const text = document.getElementById('chat-input').value.trim();
+  if (!target || !text) return;
+  
+  const convos = JSON.parse(localStorage.getItem('chats') || '{}');
+  const key = target === 'admin' ? 'sp_admin' : `sp_${target}`;
+  const reverseKey = target === 'admin' ? 'admin_sp' : `${target}_sp`;
+  
+  if (!convos[key]) convos[key] = [];
+  convos[key].push({
+    from: 'sp',
+    fromName: user.name,
+    text,
+    time: new Date().toLocaleString()
+  });
+  if (!convos[reverseKey]) convos[reverseKey] = [];
+  convos[reverseKey].push({
+    from: 'sp',
+    fromName: user.name,
+    text,
+    time: new Date().toLocaleString()
+  });
+  
+  localStorage.setItem('chats', JSON.stringify(convos));
+  document.getElementById('chat-input').value = '';
+  loadChat();
+};
+
+// Initialize
+loadSubStoreOptions();
 </script>
 </body>
 </html>
