@@ -25,13 +25,14 @@
     .badge.approved::after{content:" ✓";}
     .badge.rejected::after{content:" ✗";}
     .subscription-alert{background:#fff3cd;border-left:4px solid #ffc107;padding:12px;margin:10px 0;}
+    .subscription-alert.expired{background:#f8d7da;border-color:#dc3545;}
     .password-log{font-size:0.8rem;color:#666;margin-top:5px;}
     .denom-row{display:flex;align-items:center;gap:10px;margin:4px 0;}
     .btn-sm{padding:4px 8px;font-size:0.85rem;}
     table{width:100%;border-collapse:collapse;margin:10px 0;}
     th,td{border:1px solid #ddd;padding:8px;text-align:left;}
     th{background:#f5f5f5;}
-    .stock-hidden{display:none;} /* Stock count hidden from cashier */
+    .stock-hidden{display:none;}
   </style>
 </head>
 <body>
@@ -44,13 +45,11 @@
       </div>
       <button id="logout-btn" class="btn-logout">Log Out</button>
     </div>
-
     <!-- Subscription Status -->
     <div id="sub-alert" class="subscription-alert hidden">
       <strong>⚠️ Subscription Notice:</strong>
       <span id="sub-status-text"></span>
     </div>
-
     <div class="tabs">
       <button class="tab-btn active" data-tab="stores">Stores</button>
       <button class="tab-btn" data-tab="cashiers">Cashiers</button>
@@ -202,13 +201,11 @@
         <p>Full system reset button is available to Service Provider only.</p>
       </div>
     </div>
-
   </div>
 
 <script type="module">
 import { requireAuth } from '../../auth/protect.js';
 import { logout } from '../../auth/login.js';
-
 const user = requireAuth(['admin']);
 if (!user) window.location.href = '../../auth/login.html';
 const CURRENT_USER = user;
@@ -224,25 +221,35 @@ window.addEventListener('online', updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
 updateOnlineStatus();
 
-// SUBSCRIPTION CHECK
+// SUBSCRIPTION STATUS WITH END DATE
 function checkSubscription() {
   const sub = JSON.parse(localStorage.getItem('subscription') || '{}');
+  const alertBox = document.getElementById('sub-alert');
+  const textSpan = document.getElementById('sub-status-text');
+  
   if (!sub.startDate) {
-    document.getElementById('sub-alert').classList.remove('hidden');
-    document.getElementById('sub-status-text').textContent = 'Free trial active — start date not set.';
+    alertBox.classList.remove('hidden');
+    alertBox.classList.remove('expired');
+    textSpan.textContent = 'Free Trial Active — Start Date Not Set. Ends 7 days after first use.';
     return;
   }
+  
   const start = new Date(sub.startDate);
+  const expiry = new Date(start.getTime() + 7 * 86400000);
   const now = new Date();
-  const days = Math.floor((now - start) / (1000*60*60*24));
-  if (days > 7) {
-    document.getElementById('sub-alert').classList.remove('hidden');
-    document.getElementById('sub-alert').style.background = '#f8d7da';
-    document.getElementById('sub-alert').style.borderColor = '#dc3545';
-    document.getElementById('sub-status-text').textContent = `EXPIRED — Subscription ended. Please renew from Service Provider. (${days} days since start)`;
-  } else if (days >= 5) {
-    document.getElementById('sub-alert').classList.remove('hidden');
-    document.getElementById('sub-status-text').textContent = `Expiring soon — ${7-days} day(s) remaining. Renew to continue.`;
+  const daysLeft = Math.ceil((expiry - now) / 86400000);
+  
+  alertBox.classList.remove('hidden');
+  
+  if (now > expiry) {
+    alertBox.classList.add('expired');
+    textSpan.textContent = `🔴 EXPIRED — Subscription ended ${expiry.toLocaleDateString()}. Please contact Service Provider to renew.`;
+  } else if (daysLeft <= 2) {
+    alertBox.classList.remove('expired');
+    textSpan.textContent = `⚠️ Expiring SOON — Expires: ${expiry.toLocaleDateString()} (${daysLeft} day(s) remaining). Renew now to avoid service interruption.`;
+  } else {
+    alertBox.classList.remove('expired');
+    textSpan.textContent = `✅ Active — Subscription Expires: ${expiry.toLocaleDateString()} (${daysLeft} days remaining)`;
   }
 }
 checkSubscription();
@@ -271,11 +278,13 @@ function renderStores() {
   }
   document.getElementById('store-list').innerHTML = stores.map(s => `
     <div class="item-card">
-      <strong>${s.code || '#' + s.id.slice(-4)}</strong> — ${s.name}
-      ${s.location ? `<br><small>📍 ${s.location}</small>` : ''}
+      <strong>${s.code || '#' + s.id.slice(-4)}</strong> — ${s.name}<br>
+      ${s.location ? `<small>📍 ${s.location}</small><br>` : ''}
+      Created: ${new Date(s.createdAt).toLocaleDateString()}<br>
+      <button class="btn-secondary delete-store-btn" data-id="${s.id}" style="margin-top:8px;background:#dc3545;color:#fff;border:none;cursor:pointer;">Delete Store</button>
     </div>
   `).join('');
-  // Update dropdowns
+  
   const opts = '<option value="">— Select —</option>' +
     stores.map(s => `<option value="${s.id}">${s.code || ''} ${s.name}</option>`).join('');
   document.getElementById('cashier-store').innerHTML = opts;
@@ -285,6 +294,7 @@ function renderStores() {
   document.getElementById('report-store').innerHTML = opts;
   document.getElementById('count-req-store').innerHTML = opts;
 }
+
 document.getElementById('add-store-btn').onclick = () => {
   const name = document.getElementById('store-name').value.trim();
   if (!name) return alert('Enter store name.');
@@ -321,11 +331,12 @@ function renderCashiers() {
         <strong>${c.fname} ${c.lname || ''}</strong><br>
         Store: ${store ? store.name : 'Not Assigned'}<br>
         Password: <code>${'•'.repeat(c.password.length)}</code>
-        ${c.lastPwdChange ? `<br><small>Last changed: ${new Date(c.lastPwdChange).toLocaleString()}</small>` : ''}
+        ${c.lastPwdChange ? `<br><small>Last changed: ${new Date(c.lastPwdChange).toLocaleString()}</small>` : ''}<br>
+        <button class="btn-secondary delete-cashier-btn" data-id="${c.id}" style="margin-top:8px;background:#dc3545;color:#fff;border:none;cursor:pointer;">Remove Cashier</button>
       </div>
     `;
   }).join('');
-  // Update dropdowns
+  
   document.getElementById('cashier-to-update').innerHTML =
     '<option value="">— Select —</option>' +
     cashiers.map(c => `<option value="${c.id}">${c.fname} ${c.lname || ''}</option>`).join('');
@@ -333,6 +344,7 @@ function renderCashiers() {
     '<option value="">— Select Cashier —</option>' +
     cashiers.map(c => `<option value="${c.id}">${c.fname} ${c.lname || ''}</option>`).join('');
 }
+
 document.getElementById('add-cashier-btn').onclick = () => {
   const fname = document.getElementById('cashier-fname').value.trim();
   const lname = document.getElementById('cashier-lname').value.trim();
@@ -358,6 +370,7 @@ document.getElementById('add-cashier-btn').onclick = () => {
   document.getElementById('cashier-pwd').value = '';
   renderCashiers();
 };
+
 document.getElementById('update-pwd-btn').onclick = () => {
   const id = document.getElementById('cashier-to-update').value;
   const newPwd = document.getElementById('new-cashier-pwd').value.trim();
@@ -365,7 +378,6 @@ document.getElementById('update-pwd-btn').onclick = () => {
   const cashiers = JSON.parse(localStorage.getItem('cashiers') || '[]');
   const idx = cashiers.findIndex(c => c.id === id);
   if (idx < 0) return alert('Cashier not found.');
-  // Log change
   cashiers[idx].prevPassword = cashiers[idx].password;
   cashiers[idx].password = newPwd;
   cashiers[idx].lastPwdChange = new Date().toISOString();
@@ -385,10 +397,12 @@ function renderProducts(filterStore=null) {
         <div class="item-card">
           <strong>${p.name}</strong><br>
           Price: ₱${p.price.toFixed(2)} | Stock: ${p.stock || 0}<br>
-          <small>Barcode: ${p.barcode || 'Auto-generated'}</small>
+          <small>Barcode: ${p.barcode || 'Auto-generated'}</small><br>
+          <button class="btn-secondary delete-product-btn" data-id="${p.id}" style="margin-top:8px;background:#dc3545;color:#fff;border:none;cursor:pointer;">Delete Product</button>
         </div>
       `).join('');
 }
+
 document.getElementById('add-prod-btn').onclick = () => {
   const storeId = document.getElementById('prod-store').value;
   const name = document.getElementById('prod-name').value.trim();
@@ -415,9 +429,62 @@ document.getElementById('add-prod-btn').onclick = () => {
   document.getElementById('prod-barcode').value = '';
   renderProducts();
 };
+
 document.getElementById('prod-filter-store').onchange = e => {
   renderProducts(e.target.value || null);
 };
+
+// ========== DELETE FUNCTIONS ==========
+document.addEventListener('click', e => {
+  // DELETE STORE
+  if (e.target.classList.contains('delete-store-btn')) {
+    if (!confirm('⚠️ Delete this store? All products & cashiers linked to it will also be removed. This cannot be undone!')) return;
+    const storeId = e.target.dataset.id;
+    
+    let stores = JSON.parse(localStorage.getItem('stores') || '[]');
+    stores = stores.filter(s => s.id !== storeId);
+    localStorage.setItem('stores', JSON.stringify(stores));
+    
+    let products = JSON.parse(localStorage.getItem('products') || '[]');
+    products = products.filter(p => p.storeId !== storeId);
+    localStorage.setItem('products', JSON.stringify(products));
+    
+    let cashiers = JSON.parse(localStorage.getItem('cashiers') || '[]');
+    cashiers = cashiers.filter(c => c.storeId !== storeId);
+    localStorage.setItem('cashiers', JSON.stringify(cashiers));
+    
+    alert('✅ Store and related data deleted');
+    renderStores();
+    renderProducts();
+    renderCashiers();
+  }
+  
+  // DELETE CASHIER
+  if (e.target.classList.contains('delete-cashier-btn')) {
+    if (!confirm('Remove this cashier? They will no longer be able to log in.')) return;
+    const cid = e.target.dataset.id;
+    
+    let cashiers = JSON.parse(localStorage.getItem('cashiers') || '[]');
+    cashiers = cashiers.filter(c => c.id !== cid);
+    localStorage.setItem('cashiers', JSON.stringify(cashiers));
+    
+    alert('✅ Cashier removed');
+    renderCashiers();
+  }
+  
+  // DELETE PRODUCT
+  if (e.target.classList.contains('delete-product-btn')) {
+    if (!confirm('Delete this product? Stock & history may be affected.')) return;
+    const pid = e.target.dataset.id;
+    
+    let products = JSON.parse(localStorage.getItem('products') || '[]');
+    products = products.filter(p => p.id !== pid);
+    localStorage.setItem('products', JSON.stringify(products));
+    
+    alert('✅ Product deleted');
+    renderProducts();
+  }
+});
 
 // ========== STOCK OVERVIEW ==========
 function loadStockOverview() {
@@ -516,7 +583,6 @@ function loadRequests() {
         `;
       }).join('');
   
-  // Attach buttons
   document.querySelectorAll('.approve-btn, .reject-btn').forEach(btn => {
     btn.onclick = () => {
       const id = btn.dataset.id;
@@ -527,7 +593,6 @@ function loadRequests() {
         reqs[idx].status = newStatus;
         reqs[idx].reviewedAt = new Date().toISOString();
         reqs[idx].reviewedBy = CURRENT_USER.id;
-        // If stockout approved, deduct stock
         if (reqs[idx].type === 'stockout' && newStatus === 'approved') {
           const prods = JSON.parse(localStorage.getItem('products') || '[]');
           const pIdx = prods.findIndex(p => p.id === reqs[idx].productId && p.storeId === reqs[idx].storeId);
@@ -566,6 +631,7 @@ function loadCountChecklist() {
   };
 }
 document.getElementById('count-req-store').onchange = loadCountChecklist;
+
 document.getElementById('send-count-req-btn').onclick = () => {
   const storeId = document.getElementById('count-req-store').value;
   if (!storeId) return alert('Select store.');
@@ -584,6 +650,7 @@ document.getElementById('send-count-req-btn').onclick = () => {
   alert('Count request sent to cashier ✅');
   loadCountResults();
 };
+
 function loadCountResults() {
   const counts = JSON.parse(localStorage.getItem('countRequests') || '[]');
   const prods = JSON.parse(localStorage.getItem('products') || '[]');
@@ -617,7 +684,7 @@ function loadCountResults() {
 }
 
 // ========== CHAT ==========
-let CHAT_TARGET = null; // {type:'cashier'|'sp', id:'...'}
+let CHAT_TARGET = null;
 document.getElementById('chat-partner').onchange = e => {
   const val = e.target.value;
   document.getElementById('chat-cashier-select').classList.toggle('hidden', val !== 'cashier');
@@ -629,15 +696,16 @@ document.getElementById('chat-partner').onchange = e => {
     loadChatMessages();
   }
 };
+
 document.getElementById('chat-cashier-select').onchange = e => {
   const id = e.target.value;
   if (!id) return;
   CHAT_TARGET = { type: 'cashier', id };
   loadChatMessages();
 };
+
 function loadChatMessages() {
   if (!CHAT_TARGET) return;
-  // Private key: chat_admin_cashier_{id} or chat_admin_sp
   const convKey = CHAT_TARGET.type === 'sp'
     ? 'chat_admin_sp'
     : `chat_admin_cashier_${CHAT_TARGET.id}`;
@@ -654,6 +722,7 @@ function loadChatMessages() {
       `).join('');
   document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
 }
+
 document.getElementById('send-chat-btn').onclick = () => {
   if (!CHAT_TARGET) return alert('Select recipient first.');
   const text = document.getElementById('chat-text').value.trim();
@@ -663,14 +732,13 @@ document.getElementById('send-chat-btn').onclick = () => {
     : `chat_admin_cashier_${CHAT_TARGET.id}`;
   const receiverKey = CHAT_TARGET.type === 'sp'
     ? 'chat_sp_admin'
-    : `chat_cashier_admin`; // cashier sees under their key
+    : `chat_cashier_admin`;
   const msg = {
     senderId: CURRENT_USER.id,
     senderName: CURRENT_USER.name || 'Admin',
     text,
     time: new Date().toISOString()
   };
-  // Save both sides
   const msgs = JSON.parse(localStorage.getItem(convKey) || '[]');
   msgs.push(msg);
   localStorage.setItem(convKey, JSON.stringify(msgs));
