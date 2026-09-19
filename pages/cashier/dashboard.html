@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cashier Dashboard — BPOS</title>
+  <link rel="stylesheet" href="../../assets/css/style.css">
+</head>
+<body>
+  <div class="cashier-container">
+    <div class="header">
+      <div><h1>Cashier Dashboard</h1><p id="who"></p></div>
+      <button id="logout-btn" class="btn-logout">Log Out</button>
+    </div>
+    <div class="grid">
+      <div class="panel">
+        <h3>Shift Control</h3>
+        <button id="shift-btn" class="btn-primary">Start Shift</button>
+        <p id="shift-time"></p>
+      </div>
+      <div class="panel">
+        <h3>Record Sale</h3>
+        <div class="form-row"><label>Item/Description:</label><input type="text" id="item"></div>
+        <div class="form-row"><label>Amount:</label><input type="number" id="amount" step="0.01"></div>
+        <div class="form-row"><label>Payment Method:</label>
+          <select id="method">
+            <option value="cash">Cash</option>
+            <option value="gcash">GCash</option>
+          </select>
+        </div>
+        <button id="sale-btn" class="btn-primary">Save Sale</button>
+      </div>
+      <div class="panel">
+        <h3>Cash Count</h3>
+        <div class="denom-row"><span>₱1000</span><input type="number" data-v="1000" min="0"></div>
+        <div class="denom-row"><span>₱500</span><input type="number" data-v="500" min="0"></div>
+        <div class="denom-row"><span>₱200</span><input type="number" data-v="200" min="0"></div>
+        <div class="denom-row"><span>₱100</span><input type="number" data-v="100" min="0"></div>
+        <div class="denom-row"><span>₱50</span><input type="number" data-v="50" min="0"></div>
+        <div class="denom-row"><span>₱20</span><input type="number" data-v="20" min="0"></div>
+        <p class="total">Total: ₱<span id="sum">0.00</span></p>
+      </div>
+      <div class="panel" style="grid-column: 1 / -1;">
+        <h3>Today's Sales</h3>
+        <div id="list"></div>
+      </div>
+    </div>
+  </div>
+
+<script type="module">
+import { requireAuth } from '../../auth/protect.js';
+import { logout } from '../../auth/login.js';
+
+const user = requireAuth(['cashier']);
+if (!user) {}
+
+document.getElementById('who').textContent = `${user.name} — Store: ${user.storeId}`;
+document.getElementById('logout-btn').onclick = logout;
+
+let shiftOn = localStorage.getItem('shiftOn') === 'true';
+function updateShift() {
+  document.getElementById('shift-btn').textContent = shiftOn ? 'End Shift' : 'Start Shift';
+  document.getElementById('shift-time').textContent = shiftOn ? `Started: ${localStorage.getItem('shiftAt')}` : '';
+}
+document.getElementById('shift-btn').onclick = () => {
+  shiftOn = !shiftOn;
+  localStorage.setItem('shiftOn', shiftOn);
+  if (shiftOn) localStorage.setItem('shiftAt', new Date().toLocaleString());
+  updateShift();
+};
+updateShift();
+
+function renderSales() {
+  const sales = JSON.parse(localStorage.getItem('sales') || '[]');
+  document.getElementById('list').innerHTML = sales.length === 0
+    ? '<p>No sales recorded yet.</p>'
+    : sales.slice().reverse().map(s => `<div style="padding:8px 0; border-bottom:1px solid #eee;"><strong>${s.item}</strong> — ₱${s.amount.toFixed(2)} (${s.method})<br><small>${s.time}</small></div>`).join('');
+}
+
+document.getElementById('sale-btn').onclick = () => {
+  if (!shiftOn) return alert('Start your shift first!');
+  const item = document.getElementById('item').value.trim();
+  const amount = parseFloat(document.getElementById('amount').value);
+  if (!item || !amount) return alert('Fill in all fields!');
+  const sales = JSON.parse(localStorage.getItem('sales') || '[]');
+  sales.push({ item, amount, method: document.getElementById('method').value, time: new Date().toLocaleString() });
+  localStorage.setItem('sales', JSON.stringify(sales));
+  document.getElementById('item').value = '';
+  document.getElementById('amount').value = '';
+  renderSales();
+};
+
+function calcTotal() {
+  let total = 0;
+  document.querySelectorAll('[data-v]').forEach(inp => total += parseInt(inp.dataset.v) * parseInt(inp.value || 0));
+  document.getElementById('sum').textContent = total.toFixed(2);
+}
+document.querySelectorAll('[data-v]').forEach(inp => inp.oninput = calcTotal);
+
+renderSales();
+</script>
+</body>
+</html>
