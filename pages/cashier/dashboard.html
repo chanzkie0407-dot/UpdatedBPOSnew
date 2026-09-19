@@ -6,338 +6,467 @@
   <title>Cashier Dashboard — BPOS</title>
   <link rel="stylesheet" href="../../assets/css/style.css">
   <style>
-    .status-indicator { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; margin-right: 12px; }
-    .status-dot { width: 10px; height: 10px; border-radius: 50%; }
-    .status-online { background: #10b981; }
-    .status-offline { background: #ef4444; animation: pulse 2s infinite; }
-    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
-    .notification-popup { position: fixed; top: 20px; right: 20px; background: #dbeafe; border: 2px solid #3b82f6; padding: 15px 20px; border-radius: 8px; z-index: 999; display: none; max-width: 350px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-    .ticket-link { color: #3b82f6; text-decoration: underline; cursor: pointer; }
-    .ticket-link:hover { color: #1d4ed8; }
-    #sale-viewer { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
-    #sale-viewer .card { background: white; padding: 20px; border-radius: 10px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
+    .online-indicator{position:fixed;top:10px;right:10px;padding:6px 12px;border-radius:20px;font-weight:bold;font-size:0.85rem;z-index:999;}
+    .online-indicator.online{background:#d4edda;color:#155724;}
+    .online-indicator.offline{background:#f8d7da;color:#721c24;}
+    .tab-content{display:none;}
+    .tab-content.active{display:block;}
+    .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;}
+    .item-card{border:1px solid #ddd;border-radius:8px;padding:10px;margin:8px 0;display:flex;justify-content:space-between;align-items:flex-start;}
+    .chat-box{border:1px solid #ccc;border-radius:8px;padding:10px;height:300px;overflow-y:auto;background:#fafafa;}
+    .chat-msg{margin:6px 0;padding:8px;border-radius:8px;max-width:75%;}
+    .chat-msg.sent{background:#007bff;color:#fff;margin-left:auto;}
+    .chat-msg.received{background:#e9ecef;color:#333;margin-right:auto;}
+    .denom-row{display:flex;align-items:center;gap:10px;margin:4px 0;}
+    .denom-row label{width:80px;}
+    .denom-row input{width:100px;text-align:right;}
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;}
+    .modal-box{background:#fff;padding:20px;border-radius:10px;max-width:500px;width:90%;max-height:90vh;overflow-y:auto;}
+    .hidden{display:none !important;}
+    .product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
+    .product-card{border:1px solid #ddd;border-radius:8px;padding:8px;cursor:pointer;transition:0.2s;}
+    .product-card:hover{border-color:#007bff;background:#f0f7ff;}
+    .badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.75rem;font-weight:bold;}
+    .badge.waiting{background:#fff3cd;color:#856404;}
+    .badge.approved{background:#d4edda;color:#155724;}
+    .badge.rejected{background:#f8d7da;color:#721c24;}
   </style>
 </head>
 <body>
-  <!-- SP Notification -->
-  <div id="sp-notification" class="notification-popup">
-    <strong>📩 Message from Service Provider:</strong>
-    <p id="sp-notif-text" style="margin:8px 0;"></p>
-    <button onclick="closeSPNotif()" class="btn-primary" style="padding:5px 10px; font-size:13px;">Got it</button>
-  </div>
-
-  <!-- Sale Viewer Modal -->
-  <div id="sale-viewer">
-    <div class="card">
-      <h3>Ticket Details</h3>
-      <div id="sale-content"></div>
-      <button onclick="closeSaleViewer()" class="btn-primary" style="margin-top:10px;">Close</button>
-    </div>
-  </div>
+  <!-- Online/Offline Status -->
+  <div id="online-indicator" class="online-indicator online">● Online</div>
 
   <div class="cashier-container">
     <div class="header">
       <div>
         <h1>Cashier Dashboard</h1>
-        <p id="who"></p>
-        <p id="store-name"></p>
+        <p id="store-name">— Select Store —</p>
       </div>
-      <div style="display:flex; align-items:center; gap:10px;">
-        <span id="connection-status" class="status-indicator">
-          <span id="status-dot" class="status-dot status-online"></span>
-          <span id="status-text">Online</span>
-        </span>
-        <button id="logout-btn" class="btn-logout">Log Out</button>
-      </div>
+      <button id="logout-btn" class="btn-logout">Log Out</button>
     </div>
 
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="shift">Shift</button>
-      <button class="tab-btn" data-tab="sales">Sales</button>
-      <button class="tab-btn" data-tab="voids">Void/Out</button>
-      <button class="tab-btn" data-tab="cashflow">Cash In/Out</button>
-      <button class="tab-btn" data-tab="count">Stock Count</button>
-      <button class="tab-btn" data-tab="chat">Chat</button>
+    <!-- Shift Status Bar -->
+    <div id="shift-bar" class="panel" style="background:#e3f2fd;display:none;">
+      <strong>Shift Active</strong> — Started: <span id="shift-start-time">—</span>
+      <button id="end-shift-btn" class="btn-logout" style="margin-left:auto;">End Shift</button>
     </div>
 
-    <!-- SHIFT TAB -->
-    <div id="shift" class="tab-content active">
-      <div class="panel">
-        <h3>Shift Control</h3>
-        <button id="shift-btn" class="btn-primary">Start Shift</button>
-        <p id="shift-time"></p>
-        <p id="shift-status"></p>
-        <div id="float-section" style="display:none; margin-top:15px;">
-          <h4>Enter Opening Cash Float</h4>
-          <div class="form-row">
-            <label>Amount:</label>
-            <input type="number" id="float-amount" step="0.01" min="0" placeholder="0.00">
-          </div>
-          <button id="confirm-float" class="btn-success">Confirm Float</button>
-        </div>
-        <div id="close-shift-section" style="display:none; margin-top:20px;">
-          <h4>End Shift — Cash Count</h4>
-          <p>Enter denominations before closing:</p>
-          <div class="denom-row"><span>₱1000</span><input type="number" id="d1000" min="0" value="0"></div>
-          <div class="denom-row"><span>₱500</span><input type="number" id="d500" min="0" value="0"></div>
-          <div class="denom-row"><span>₱200</span><input type="number" id="d200" min="0" value="0"></div>
-          <div class="denom-row"><span>₱100</span><input type="number" id="d100" min="0" value="0"></div>
-          <div class="denom-row"><span>₱50</span><input type="number" id="d50" min="0" value="0"></div>
-          <div class="denom-row"><span>₱20</span><input type="number" id="d20" min="0" value="0"></div>
-          <div class="denom-row"><span>Coins</span><input type="number" id="dcoin" min="0" value="0"></div>
-          <p class="total">Total Cash: ₱<span id="cash-total">0.00</span></p>
-          <button id="end-shift-btn" class="btn-logout" style="margin-top:15px;">End Shift & Log Out</button>
-        </div>
+    <!-- Store Selection -->
+    <div id="store-select-section" class="panel">
+      <h3>Select Your Store</h3>
+      <select id="store-selector" class="form-input">
+        <option value="">— Choose Store —</option>
+      </select>
+      <button id="confirm-store-btn" class="btn-primary" style="margin-top:10px;">Confirm Store</button>
+    </div>
+
+    <!-- Tabs -->
+    <div id="tabs-container" class="hidden">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="sales">Sales</button>
+        <button class="tab-btn" data-tab="transactions">Recent Tx</button>
+        <button class="tab-btn" data-tab="requests">Requests</button>
+        <button class="tab-btn" data-tab="cash-movement">Cash In/Out</button>
+        <button class="tab-btn" data-tab="stock-count">Stock Count</button>
+        <button class="tab-btn" data-tab="chat">Chat</button>
       </div>
-    </div>
 
-    <!-- SALES TAB -->
-    <div id="sales" class="tab-content">
-      <div class="grid">
-        <div class="panel" style="grid-column: 1 / -1;">
-          <h3>Products</h3>
-          <div class="form-row">
-            <label>Search / Scan Barcode:</label>
-            <input type="text" id="prod-search" placeholder="Type name, scan barcode...">
-            <button id="scan-btn" class="btn-primary" style="width:auto; padding:6px 12px;">📷 Scan</button>
-          </div>
-          <div id="product-grid" class="product-grid"></div>
+      <!-- ========== SALES TAB ========== -->
+      <div id="sales" class="tab-content active">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+          <input type="text" id="prod-search" placeholder="Search product or scan barcode..." class="form-input" style="flex:1;min-width:200px;">
+          <button id="scan-btn" class="btn-primary" style="width:auto;">📷 Scan</button>
         </div>
 
-        <div class="panel" style="grid-column: 1 / 2;">
-          <h3>Current Order</h3>
-          <div id="cart-items"></div>
-          <div style="margin-top:10px;">
-            <p><strong>Subtotal:</strong> ₱<span id="subtotal">0.00</span></p>
-            <div class="form-row">
-              <label>Discount (%):</label>
-              <input type="number" id="discount-pct" min="0" max="100" value="0" style="width:80px;">
-            </div>
-            <p><strong>Total:</strong> ₱<span id="grand-total">0.00</span></p>
+        <div style="display:grid;grid-template-columns:1fr 350px;gap:15px;">
+          <!-- Product List -->
+          <div>
+            <h3>Products</h3>
+            <div id="product-list" class="product-grid"></div>
           </div>
-          <button id="clear-cart" class="btn-delete" style="width:auto; margin:10px 0;">Clear Order</button>
-        </div>
 
-        <div class="panel" style="grid-column: 2 / -1;">
-          <h3>Payment</h3>
-          <div class="form-row">
-            <label>Method:</label>
-            <select id="pay-method">
-              <option value="cash">Cash</option>
-              <option value="gcash">GCash</option>
-              <option value="split">Split (Cash + GCash)</option>
-            </select>
-          </div>
-          <div id="cash-fields">
-            <div class="form-row">
-              <label>Cash Received:</label>
-              <input type="number" id="cash-received" step="0.01" min="0" placeholder="0.00">
+          <!-- Cart -->
+          <div>
+            <h3>Current Order</h3>
+            <div id="cart-items" style="min-height:150px;border:1px solid #ccc;padding:10px;border-radius:8px;">
+              <p style="color:#888;">No items yet.</p>
             </div>
-            <p><strong>Change:</strong> ₱<span id="change">0.00</span></p>
-          </div>
-          <div id="split-fields" style="display:none;">
-            <div class="form-row">
-              <label>Cash Amount:</label>
-              <input type="number" id="split-cash" step="0.01" min="0" placeholder="0.00">
-            </div>
-            <div class="form-row">
-              <label>GCash Amount:</label>
-              <input type="number" id="split-gcash" step="0.01" min="0" placeholder="0.00">
+            <div style="margin-top:10px;">
+              <p>Subtotal: <strong id="subtotal">₱0.00</strong></p>
+              <div style="margin:8px 0;">
+                <label>Discount Type:</label>
+                <select id="discount-type" class="form-input">
+                  <option value="none">None</option>
+                  <option value="senior">Senior Citizen</option>
+                  <option value="pwd">PWD</option>
+                </select>
+                <label style="margin-left:10px;">ID #:</label>
+                <input type="text" id="discount-id" placeholder="ID Number" class="form-input" style="width:120px;">
+              </div>
+              <p>Total: <strong id="grand-total" style="font-size:1.3rem;">₱0.00</strong></p>
+              
+              <div style="margin-top:15px;">
+                <label>Payment Method:</label>
+                <select id="pay-method" class="form-input">
+                  <option value="cash">Cash</option>
+                  <option value="gcash">GCash</option>
+                  <option value="split">Split (Cash + GCash)</option>
+                </select>
+                
+                <div id="cash-amount-row" style="margin-top:8px;">
+                  <label>Cash Received:</label>
+                  <input type="number" id="cash-received" step="0.01" min="0" placeholder="0.00" class="form-input">
+                  <p>Change: <span id="change-amount">₱0.00</span></p>
+                </div>
+                
+                <div id="gcash-amount-row" class="hidden" style="margin-top:8px;">
+                  <label>GCash Ref #:</label>
+                  <input type="text" id="gcash-ref" placeholder="Reference No." class="form-input">
+                </div>
+              </div>
+              
+              <button id="complete-sale" class="btn-primary" style="width:100%;margin-top:15px;">Complete Sale</button>
+              <button id="clear-cart" class="btn-secondary" style="width:100%;margin-top:5px;">Clear Cart</button>
             </div>
           </div>
-          <button id="complete-sale" class="btn-primary">Complete Sale</button>
-        </div>
-
-        <div class="panel" style="grid-column: 1 / -1;">
-          <h3>Recent Transactions (Last 5)</h3>
-          <div id="recent-tx"></div>
         </div>
       </div>
-    </div>
 
-    <!-- VOID TAB -->
-    <div id="voids" class="tab-content">
-      <div class="panel">
-        <h3>Request Void / Ticket Correction</h3>
-        <div class="form-row">
-          <label>Type:</label>
-          <select id="void-type">
-            <option value="ticket">Void Transaction</option>
-            <option value="product_out">Product Out (No Charge)</option>
-          </select>
-        </div>
-        <div id="ticket-void">
-          <div class="form-row">
-            <label>Wrong Ticket #:</label>
-            <input type="text" id="wrong-ticket" placeholder="e.g. TX-001">
-          </div>
-          <div class="form-row">
-            <label>Correct Ticket # (Optional):</label>
-            <input type="text" id="correct-ticket" placeholder="e.g. TX-002">
-          </div>
-        </div>
-        <div id="prod-out-fields" style="display:none;">
-          <div class="form-row">
-            <label>Product Name:</label>
-            <input type="text" id="out-prod-name">
-          </div>
-          <div class="form-row">
-            <label>Quantity:</label>
-            <input type="number" id="out-qty" min="1" value="1">
-          </div>
-        </div>
-        <div class="form-row">
-          <label>Reason:</label>
-          <textarea id="void-reason" rows="3" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;"></textarea>
-        </div>
-        <button id="submit-void" class="btn-primary">Submit Request</button>
+      <!-- ========== RECENT TRANSACTIONS ========== -->
+      <div id="transactions" class="tab-content">
+        <h3>Recent Transactions (Last 5)</h3>
+        <div id="recent-tx"></div>
       </div>
-    </div>
 
-    <!-- CASHFLOW TAB -->
-    <div id="cashflow" class="tab-content">
-      <div class="panel">
-        <h3>Cash In / Cash Out</h3>
-        <div class="form-row">
-          <label>Type:</label>
-          <select id="flow-type">
-            <option value="in">Cash In (Add to Remittance)</option>
-            <option value="out">Cash Out (Deduct from Remittance)</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label>Amount:</label>
-          <input type="number" id="flow-amount" step="0.01" min="0" required>
-        </div>
-        <div class="form-row">
-          <label>Reason / Source:</label>
-          <input type="text" id="flow-reason" required placeholder="Purpose or source">
-        </div>
-        <button id="submit-flow" class="btn-primary">Submit</button>
-        <h4 style="margin-top:25px;">History</h4>
-        <div id="flow-history"></div>
+      <!-- ========== REQUESTS (Void / Product Out) ========== -->
+      <div id="requests" class="tab-content">
+        <h3>Void Requests</h3>
+        <button id="new-void-req" class="btn-primary">Request Void</button>
+        <div id="void-req-list"></div>
+
+        <h3 style="margin-top:30px;">Product Out / Issued</h3>
+        <button id="new-prod-out" class="btn-primary">Record Product Out</button>
+        <div id="prod-out-list"></div>
       </div>
-    </div>
 
-    <!-- STOCK COUNT TAB -->
-    <div id="count" class="tab-content">
-      <div class="panel">
-        <h3>Stock Count Tasks</h3>
+      <!-- ========== CASH IN / OUT ========== -->
+      <div id="cash-movement" class="tab-content">
+        <h3>Cash In (Add to Remittance)</h3>
+        <div class="form-card">
+          <input type="number" id="cash-in-amt" step="0.01" min="0" placeholder="Amount" class="form-input">
+          <input type="text" id="cash-in-reason" placeholder="Reason / Source" class="form-input">
+          <button id="submit-cash-in" class="btn-primary">Record Cash In</button>
+        </div>
+
+        <h3 style="margin-top:20px;">Cash Out (Deduct from Remittance)</h3>
+        <div class="form-card">
+          <input type="number" id="cash-out-amt" step="0.01" min="0" placeholder="Amount" class="form-input">
+          <input type="text" id="cash-out-reason" placeholder="Reason" class="form-input">
+          <button id="submit-cash-out" class="btn-primary">Record Cash Out</button>
+        </div>
+
+        <h3 style="margin-top:20px;">Cash Movement Log</h3>
+        <div id="cash-log"></div>
+      </div>
+
+      <!-- ========== STOCK COUNT ========== -->
+      <div id="stock-count" class="tab-content">
+        <h3>Pending Count Requests</h3>
         <div id="count-requests"></div>
-        <div id="count-form-area" style="display:none; margin-top:20px;">
-          <h4>Submit Actual Count</h4>
-          <p style="color:#666; font-size:14px;">Enter ONLY the actual counted quantity.</p>
-          <div id="count-items"></div>
-          <button id="submit-count" class="btn-primary">Submit Count</button>
-        </div>
       </div>
-    </div>
 
-    <!-- CHAT TAB -->
-    <div id="chat" class="tab-content">
-      <div class="panel">
-        <h3>Chat</h3>
-        <div class="form-row">
-          <label>Chat With:</label>
-          <select id="chat-target">
-            <option value="">-- Select --</option>
-            <option value="admin">Admin / Owner</option>
-            <option value="sp">Service Provider</option>
-          </select>
-        </div>
-        <div id="chat-messages" class="chat-box"></div>
-        <div style="display:flex; gap:10px; margin-top:10px;">
-          <input type="text" id="chat-input" placeholder="Type message..." style="flex:1;">
-          <button id="chat-send" class="btn-primary" style="width:auto; margin:0;">Send</button>
+      <!-- ========== CHAT ========== -->
+      <div id="chat" class="tab-content">
+        <h3>Private Chat</h3>
+        <select id="chat-partner" class="form-input">
+          <option value="">— Select Who to Chat —</option>
+          <option value="admin">👤 Admin / Owner</option>
+          <option value="sp">🔧 Service Provider</option>
+        </select>
+        <div id="chat-box" class="chat-box" style="margin-top:10px;display:none;"></div>
+        <div style="display:flex;gap:8px;margin-top:10px;display:none;" id="chat-input-area">
+          <input type="text" id="chat-text" placeholder="Type message..." class="form-input" style="flex:1;">
+          <button id="send-chat" class="btn-primary" style="width:auto;">Send</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- AUTO-LOGOUT WARNING -->
-  <div id="idle-warning" class="auto-logout-warning">
-    <h3>Still there?</h3>
-    <p>You will be logged out due to inactivity in <span id="countdown">60</span> seconds.</p>
-    <button id="stay-logged" class="btn-primary">Stay Logged In</button>
+  <!-- ========== MODALS ========== -->
+  <!-- Start Shift Modal -->
+  <div id="start-shift-modal" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <h3>Start Your Shift</h3>
+      <p>Enter Opening Cash Float</p>
+      <input type="number" id="opening-float" step="0.01" min="0" placeholder="0.00" class="form-input">
+      <button id="confirm-shift-start" class="btn-primary" style="margin-top:10px;">Start Shift</button>
+    </div>
+  </div>
+
+  <!-- End Shift / Denomination Modal -->
+  <div id="end-shift-modal" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <h3>End Shift — Cash Count</h3>
+      <p>Fill denominations before closing shift</p>
+      <div class="denom-row"><label>₱1000:</label><input type="number" id="d1000" min="0" value="0"></div>
+      <div class="denom-row"><label>₱500:</label><input type="number" id="d500" min="0" value="0"></div>
+      <div class="denom-row"><label>₱200:</label><input type="number" id="d200" min="0" value="0"></div>
+      <div class="denom-row"><label>₱100:</label><input type="number" id="d100" min="0" value="0"></div>
+      <div class="denom-row"><label>₱50:</label><input type="number" id="d50" min="0" value="0"></div>
+      <div class="denom-row"><label>Coins:</label><input type="number" id="dcoins" step="0.01" min="0" value="0"></div>
+      <p style="margin-top:10px;"><strong>Total Remit: ₱<span id="denom-total">0.00</span></strong></p>
+      <button id="confirm-shift-end" class="btn-primary" style="margin-top:10px;">Close Shift & Logout</button>
+      <button id="cancel-shift-end" class="btn-secondary" style="margin-top:5px;">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Void Request Modal -->
+  <div id="void-modal" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <h3>Request Void</h3>
+      <label>Ticket # to Void:</label>
+      <input type="text" id="void-ticket" placeholder="e.g. 001" class="form-input">
+      <label>Reason:</label>
+      <textarea id="void-reason" class="form-input" rows="3" placeholder="Explain why..."></textarea>
+      <label>Correct / Replacement Ticket # (Optional):</label>
+      <input type="text" id="correct-ticket" placeholder="Optional" class="form-input">
+      <div class="btn-row">
+        <button id="submit-void" class="btn-primary">Send Request</button>
+        <button id="cancel-void" class="btn-secondary">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Product Out Modal -->
+  <div id="prod-out-modal" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <h3>Product Out / Issued</h3>
+      <label>Product:</label>
+      <select id="out-prod-select" class="form-input"></select>
+      <label>Quantity:</label>
+      <input type="number" id="out-qty" min="1" value="1" class="form-input">
+      <label>Reason:</label>
+      <textarea id="out-reason" class="form-input" rows="2" placeholder="e.g. Transfer to Store 2 / Owner's use"></textarea>
+      <div class="btn-row">
+        <button id="submit-prod-out" class="btn-primary">Record</button>
+        <button id="cancel-prod-out" class="btn-secondary">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Count Submission Modal -->
+  <div id="count-submit-modal" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <h3>Submit Actual Count</h3>
+      <p>Product: <strong id="count-prod-name">—</strong></p>
+      <label>Actual Quantity on Hand:</label>
+      <input type="number" id="actual-qty" min="0" class="form-input">
+      <div class="btn-row">
+        <button id="submit-count" class="btn-primary">Submit</button>
+        <button id="cancel-count" class="btn-secondary">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SP Message Popup -->
+  <div id="sp-msg-popup" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <h3>📢 Message from Service Provider</h3>
+      <p id="sp-msg-text"></p>
+      <button id="close-sp-msg" class="btn-primary">OK</button>
+    </div>
   </div>
 
 <script type="module">
 import { requireAuth } from '../../auth/protect.js';
 import { logout } from '../../auth/login.js';
 
-// ========== CONNECTION STATUS ==========
-function updateConnectionStatus() {
-  const isOnline = navigator.onLine;
-  const dot = document.getElementById('status-dot');
-  const text = document.getElementById('status-text');
-  if (isOnline) {
-    dot.className = 'status-dot status-online';
-    text.textContent = 'Online — Synced';
-  } else {
-    dot.className = 'status-dot status-offline';
-    text.textContent = 'Offline — Saving Locally';
-  }
-}
-window.addEventListener('online', () => {
-  updateConnectionStatus();
-  syncWhenOnline();
-});
-window.addEventListener('offline', updateConnectionStatus);
-updateConnectionStatus();
-
-function syncWhenOnline() {
-  console.log('🔄 Back online — data will auto-sync to storage');
-}
-
-// ========== SP NOTIFICATION ==========
-function checkSPNotification() {
-  const lastNotif = localStorage.getItem('spBroadcastNotif');
-  const shownTime = localStorage.getItem('spNotifShownCashier');
-  if (lastNotif && lastNotif !== shownTime) {
-    document.getElementById('sp-notif-text').textContent = lastNotif;
-    document.getElementById('sp-notification').style.display = 'block';
-    localStorage.setItem('spNotifShownCashier', lastNotif);
-  }
-}
-window.closeSPNotif = function() {
-  document.getElementById('sp-notification').style.display = 'none';
-};
-setInterval(checkSPNotification, 3000);
-checkSPNotification();
-
-// ========== SALE VIEWER ==========
-window.viewSale = function(ticketId) {
-  const sales = JSON.parse(localStorage.getItem('sales') || '[]');
-  const sale = sales.find(s => s.id === ticketId);
-  const viewer = document.getElementById('sale-viewer');
-  const content = document.getElementById('sale-content');
-  if (!sale) {
-    content.innerHTML = '<p>Ticket not found.</p>';
-  } else {
-    content.innerHTML = `
-      <p><strong>Ticket:</strong> ${sale.id}</p>
-      <p><strong>Date/Time:</strong> ${sale.fullTime}</p>
-      <p><strong>Items:</strong></p>
-      <ul>${sale.items.map(i => `<li>${i.name} × ${i.qty} = ₱${(i.price*i.qty).toFixed(2)}</li>`).join('')}</ul>
-      <p><strong>Subtotal:</strong> ₱${sale.subtotal.toFixed(2)}</p>
-      <p><strong>Discount:</strong> ${sale.discountPct || 0}%</p>
-      <p><strong>Total:</strong> ₱${sale.total.toFixed(2)}</p>
-      <p><strong>Method:</strong> ${sale.method}</p>
-    `;
-  }
-  viewer.style.display = 'flex';
-};
-window.closeSaleViewer = function() {
-  document.getElementById('sale-viewer').style.display = 'none';
-};
-
 // ========== AUTH ==========
 const user = requireAuth(['cashier']);
-if (!user) {}
-document.getElementById('who').textContent = `${user.fname || user.name} ${user.lname || ''}`;
-document.getElementById('store-name').textContent = `Store: ${user.storeId}`;
+if (!user) window.location.href = '../../auth/login.html';
+
+const CURRENT_USER = user;
+let SELECTED_STORE = null;
+let SHIFT_ACTIVE = false;
+let SHIFT_DATA = null;
+let CART = [];
+let LAST_ACTIVE = Date.now();
+const DISCOUNT_RATE = 0.12; // 12% discount
+
+// ========== ONLINE / OFFLINE INDICATOR ==========
+const indicator = document.getElementById('online-indicator');
+function updateOnlineStatus() {
+  const isOnline = navigator.onLine;
+  indicator.className = `online-indicator ${isOnline ? 'online' : 'offline'}`;
+  indicator.textContent = isOnline ? '● Online' : '● Offline';
+  if (isOnline) syncPendingData();
+}
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+updateOnlineStatus();
+
+// Auto-sync
+function syncPendingData() {
+  ['pendingSales','pendingVoidRequests','pendingCashMovements','pendingProductOuts','pendingCountSubmissions','pendingChats'].forEach(key => {
+    if (localStorage.getItem(key)) console.log(`Synced: ${key}`);
+  });
+}
+
+// ========== AUTO LOGOUT ON IDLE (10 mins) ==========
+const IDLE_TIMEOUT = 10 * 60 * 1000; // 10 mins
+document.addEventListener('mousedown', () => LAST_ACTIVE = Date.now());
+document.addEventListener('keydown', () => LAST_ACTIVE = Date.now());
+setInterval(() => {
+  if (Date.now() - LAST_ACTIVE > IDLE_TIMEOUT) {
+    alert('Session expired. Please log in again.');
+    performLogout();
+  }
+}, 30000);
+
+function performLogout() {
+  // Clear password fields
+  document.querySelectorAll('input[type="password"]').forEach(el => el.value = '');
+  logout();
+}
 document.getElementById('logout-btn').onclick = () => {
-  if (confirm('Log out?')) logout();
+  if (confirm('Log out?')) performLogout();
+};
+
+// ========== STORE SELECTION ==========
+function loadStores() {
+  const stores = JSON.parse(localStorage.getItem('stores') || '[]');
+  const sel = document.getElementById('store-selector');
+  sel.innerHTML = '<option value="">— Choose Store —</option>' +
+    stores.map(s => `<option value="${s.id}">${s.code ? s.code+' - ' : ''}${s.name}${s.location ? ` (${s.location})` : ''}</option>`).join('');
+}
+document.getElementById('confirm-store-btn').onclick = () => {
+  const val = document.getElementById('store-selector').value;
+  if (!val) return alert('Select a store first.');
+  const stores = JSON.parse(localStorage.getItem('stores') || '[]');
+  SELECTED_STORE = stores.find(s => s.id === val);
+  document.getElementById('store-name').textContent = SELECTED_STORE.name;
+  document.getElementById('store-select-section').classList.add('hidden');
+  document.getElementById('tabs-container').classList.remove('hidden');
+  
+  checkExistingShift();
+  loadProducts();
+  loadRecentTransactions();
+  loadVoidRequests();
+  loadProductOutList();
+  loadCashMovementLog();
+  loadCountRequests();
+  checkSPMessages();
+};
+
+// ========== SHIFT MANAGEMENT ==========
+function checkExistingShift() {
+  const shiftKey = `shift_${CURRENT_USER.id}_${SELECTED_STORE.id}`;
+  const existing = localStorage.getItem(shiftKey);
+  if (existing) {
+    SHIFT_DATA = JSON.parse(existing);
+    SHIFT_ACTIVE = true;
+    showShiftBar();
+  } else {
+    document.getElementById('start-shift-modal').classList.remove('hidden');
+  }
+}
+function showShiftBar() {
+  document.getElementById('shift-bar').style.display = 'flex';
+  document.getElementById('shift-start-time').textContent = new Date(SHIFT_DATA.startTime).toLocaleString();
+}
+document.getElementById('confirm-shift-start').onclick = () => {
+  const float = parseFloat(document.getElementById('opening-float').value) || 0;
+  if (float <= 0) return alert('Enter valid opening amount.');
+  
+  SHIFT_DATA = {
+    userId: CURRENT_USER.id,
+    userName: CURRENT_USER.name || CURRENT_USER.username,
+    storeId: SELECTED_STORE.id,
+    startTime: new Date().toISOString(),
+    openingFloat: float,
+    cashInTotal: 0,
+    cashOutTotal: 0,
+    salesTotal: 0
+  };
+  const shiftKey = `shift_${CURRENT_USER.id}_${SELECTED_STORE.id}`;
+  localStorage.setItem(shiftKey, JSON.stringify(SHIFT_DATA));
+  SHIFT_ACTIVE = true;
+  
+  document.getElementById('start-shift-modal').classList.add('hidden');
+  showShiftBar();
+  document.getElementById('opening-float').value = '';
+};
+
+// End Shift Flow
+document.getElementById('end-shift-btn').onclick = () => {
+  updateDenomTotal();
+  document.getElementById('end-shift-modal').classList.remove('hidden');
+};
+['d1000','d500','d200','d100','d50','dcoins'].forEach(id => {
+  document.getElementById(id).oninput = updateDenomTotal;
+});
+function updateDenomTotal() {
+  const total = 
+    (parseInt(document.getElementById('d1000').value)||0)*1000 +
+    (parseInt(document.getElementById('d500').value)||0)*500 +
+    (parseInt(document.getElementById('d200').value)||0)*200 +
+    (parseInt(document.getElementById('d100').value)||0)*100 +
+    (parseInt(document.getElementById('d50').value)||0)*50 +
+    (parseFloat(document.getElementById('dcoins').value)||0);
+  document.getElementById('denom-total').textContent = total.toFixed(2);
+}
+document.getElementById('cancel-shift-end').onclick = () => {
+  document.getElementById('end-shift-modal').classList.add('hidden');
+};
+document.getElementById('confirm-shift-end').onclick = () => {
+  const counted = 
+    (parseInt(document.getElementById('d1000').value)||0)*1000 +
+    (parseInt(document.getElementById('d500').value)||0)*500 +
+    (parseInt(document.getElementById('d200').value)||0)*200 +
+    (parseInt(document.getElementById('d100').value)||0)*100 +
+    (parseInt(document.getElementById('d50').value)||0)*50 +
+    (parseFloat(document.getElementById('dcoins').value)||0);
+  
+  const expected = SHIFT_DATA.openingFloat + SHIFT_DATA.salesTotal + SHIFT_DATA.cashInTotal - SHIFT_DATA.cashOutTotal;
+  const shortage = expected - counted;
+  
+  const closingRec = {
+    shiftId: `SHIFT-${CURRENT_USER.id}-${Date.now()}`,
+    userId: CURRENT_USER.id,
+    userName: SHIFT_DATA.userName,
+    storeId: SELECTED_STORE.id,
+    startTime: SHIFT_DATA.startTime,
+    endTime: new Date().toISOString(),
+    openingFloat: SHIFT_DATA.openingFloat,
+    salesTotal: SHIFT_DATA.salesTotal,
+    cashInTotal: SHIFT_DATA.cashInTotal,
+    cashOutTotal: SHIFT_DATA.cashOutTotal,
+    expectedTotal: expected,
+    countedTotal: counted,
+    shortage: shortage,
+    denominations: {
+      '1000': parseInt(document.getElementById('d1000').value)||0,
+      '500': parseInt(document.getElementById('d500').value)||0,
+      '200': parseInt(document.getElementById('d200').value)||0,
+      '100': parseInt(document.getElementById('d100').value)||0,
+      '50': parseInt(document.getElementById('d50').value)||0,
+      'coins': parseFloat(document.getElementById('dcoins').value)||0
+    }
+  };
+  
+  const closings = JSON.parse(localStorage.getItem('shiftClosings') || '[]');
+  closings.push(closingRec);
+  localStorage.setItem('shiftClosings', JSON.stringify(closings));
+  
+  localStorage.removeItem(`shift_${CURRENT_USER.id}_${SELECTED_STORE.id}`);
+  SHIFT_ACTIVE = false;
+  
+  alert(shortage !== 0 
+    ? `Shift closed. ${shortage > 0 ? 'Shortage' : 'Overage'}: ₱${Math.abs(shortage).toFixed(2)}` 
+    : 'Shift closed. Balanced ✅');
+  
+  document.getElementById('end-shift-modal').classList.add('hidden');
+  performLogout();
 };
 
 // ========== TABS ==========
@@ -347,386 +476,567 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
-    if (btn.dataset.tab === 'sales') loadProducts();
-    if (btn.dataset.tab === 'count') loadCountRequests();
-    if (btn.dataset.tab === 'cashflow') loadFlowHistory();
-    if (btn.dataset.tab === 'chat') loadChat();
   };
 });
-
-// ========== AUTO-LOGOUT ==========
-let idleTimer, warnTimer;
-const IDLE_LIMIT = 10 * 60 * 1000;
-const WARN_SEC = 60;
-function resetIdle() {
-  clearTimeout(idleTimer);
-  clearTimeout(warnTimer);
-  document.getElementById('idle-warning').style.display = 'none';
-  idleTimer = setTimeout(showWarning, IDLE_LIMIT);
-}
-function showWarning() {
-  let sec = WARN_SEC;
-  document.getElementById('countdown').textContent = sec;
-  document.getElementById('idle-warning').style.display = 'block';
-  warnTimer = setInterval(() => {
-    sec--;
-    document.getElementById('countdown').textContent = sec;
-    if (sec <= 0) { clearInterval(warnTimer); logout(); }
-  }, 1000);
-}
-document.getElementById('stay-logged').onclick = () => { clearInterval(warnTimer); resetIdle(); };
-['mousedown','keydown','touchstart','click'].forEach(evt => document.addEventListener(evt, resetIdle));
-resetIdle();
-
-// ========== SHIFT ==========
-let shiftOn = localStorage.getItem(`shiftOn_${user.id}`) === 'true';
-let cart = JSON.parse(localStorage.getItem(`cart_${user.id}`) || '[]');
-
-function updateShiftUI() {
-  document.getElementById('shift-btn').textContent = shiftOn ? 'Shift Active' : 'Start Shift';
-  document.getElementById('shift-time').textContent = shiftOn ? `Started: ${localStorage.getItem(`shiftAt_${user.id}`)}` : '';
-  document.getElementById('float-section').style.display = !shiftOn ? 'block' : 'none';
-  document.getElementById('close-shift-section').style.display = shiftOn ? 'block' : 'none';
-  document.getElementById('shift-status').textContent = shiftOn ? '✅ Shift is open' : '⏳ Not started';
-}
-document.getElementById('shift-btn').onclick = () => {
-  if (shiftOn) return alert('Shift already active!');
-  document.getElementById('float-section').style.display = 'block';
-};
-document.getElementById('confirm-float').onclick = () => {
-  const float = parseFloat(document.getElementById('float-amount').value) || 0;
-  if (float <= 0) return alert('Enter valid float!');
-  shiftOn = true;
-  localStorage.setItem(`shiftOn_${user.id}`, 'true');
-  localStorage.setItem(`shiftAt_${user.id}`, new Date().toLocaleString());
-  localStorage.setItem(`float_${user.id}`, float);
-  updateShiftUI();
-  alert('Shift started! ✅');
-};
-
-['d1000','d500','d200','d100','d50','d20','dcoin'].forEach(id => {
-  document.getElementById(id).oninput = calcCashTotal;
-});
-function calcCashTotal() {
-  const total =
-    (parseInt(document.getElementById('d1000').value)||0)*1000 +
-    (parseInt(document.getElementById('d500').value)||0)*500 +
-    (parseInt(document.getElementById('d200').value)||0)*200 +
-    (parseInt(document.getElementById('d100').value)||0)*100 +
-    (parseInt(document.getElementById('d50').value)||0)*50 +
-    (parseInt(document.getElementById('d20').value)||0)*20 +
-    (parseFloat(document.getElementById('dcoin').value)||0);
-  document.getElementById('cash-total').textContent = total.toFixed(2);
-}
-
-document.getElementById('end-shift-btn').onclick = () => {
-  if (!confirm('End shift and log out?')) return;
-  const cashCount = parseFloat(document.getElementById('cash-total').textContent);
-  const float = parseFloat(localStorage.getItem(`float_${user.id}`)) || 0;
-  const sales = JSON.parse(localStorage.getItem('sales') || '[]').filter(s => s.cashierId === user.id);
-  const expectedCash = float + sales.filter(s => s.method==='cash'||s.method==='split').reduce((a,b)=>a+(b.cashPart||0),0);
-  const short = expectedCash - cashCount;
-  const shiftReport = {
-    cashierId: user.id, name: user.name, storeId: user.storeId,
-    started: localStorage.getItem(`shiftAt_${user.id}`),
-    ended: new Date().toLocaleString(),
-    float, expectedCash, actualCash: cashCount,
-    short: short>0?short:0, excess:short<0?Math.abs(short):0,
-    denominations: {
-      '1000': +document.getElementById('d1000').value||0,
-      '500': +document.getElementById('d500').value||0,
-      '200': +document.getElementById('d200').value||0,
-      '100': +document.getElementById('d100').value||0,
-      '50': +document.getElementById('d50').value||0,
-      '20': +document.getElementById('d20').value||0,
-      coins: +document.getElementById('dcoin').value||0
-    }
-  };
-  const allShifts = JSON.parse(localStorage.getItem('shiftReports')||'[]');
-  allShifts.push(shiftReport);
-  localStorage.setItem('shiftReports', JSON.stringify(allShifts));
-  localStorage.removeItem(`shiftOn_${user.id}`);
-  localStorage.removeItem(`cart_${user.id}`);
-  logout();
-};
 
 // ========== PRODUCTS & CART ==========
-let allProducts = [];
+let ALL_PRODUCTS = [];
 function loadProducts() {
-  allProducts = JSON.parse(localStorage.getItem('products')||'[]').filter(p => p.storeId === user.storeId);
-  renderProductGrid(allProducts);
-  renderCart();
-  renderRecentTx();
+  const all = JSON.parse(localStorage.getItem('products') || '[]');
+  ALL_PRODUCTS = SELECTED_STORE 
+    ? all.filter(p => p.storeId === SELECTED_STORE.id)
+    : all;
+  renderProductList(ALL_PRODUCTS);
+  
+  const outSelect = document.getElementById('out-prod-select');
+  outSelect.innerHTML = '<option value="">— Select Product —</option>' +
+    ALL_PRODUCTS.map(p => `<option value="${p.id}">${p.name} (Stock: ${p.qty})</option>`).join('');
 }
-function renderProductGrid(list) {
-  const grid = document.getElementById('product-grid');
-  grid.innerHTML = list.length === 0 ? '<p>No products yet.</p>' :
-    list.map(p => `<div class="product-card" data-id="${p.id}">
-      <strong>${p.name}</strong><br>₱${p.price.toFixed(2)}<br><small>SKU: ${p.sku||'—'}</small>
-    </div>`).join('');
-  grid.querySelectorAll('.product-card').forEach(c => c.onclick = () => addToCart(parseInt(c.dataset.id)));
+function renderProductList(list) {
+  const container = document.getElementById('product-list');
+  container.innerHTML = list.length === 0 
+    ? '<p style="grid-column:1/-1;color:#888;">No products found.</p>'
+    : list.map(p => `
+        <div class="product-card" data-id="${p.id}">
+          <strong>${p.name}</strong><br>
+          ₱${p.price.toFixed(2)}<br>
+          Stock: ${p.qty}
+          ${p.sku ? `<br><small>${p.sku}</small>` : ''}
+        </div>
+      `).join('');
+  container.querySelectorAll('.product-card').forEach(card => {
+    card.onclick = () => addToCart(card.dataset.id);
+  });
 }
 document.getElementById('prod-search').oninput = e => {
   const q = e.target.value.toLowerCase().trim();
-  if (!q) return renderProductGrid(allProducts);
-  renderProductGrid(allProducts.filter(p =>
+  if (!q) return renderProductList(ALL_PRODUCTS);
+  const filtered = ALL_PRODUCTS.filter(p => 
     p.name.toLowerCase().includes(q) || (p.sku && p.sku.toLowerCase().includes(q))
-  ));
+  );
+  renderProductList(filtered);
 };
-document.getElementById('scan-btn').onclick = async () => {
-  try {
-    // Basic camera-trigger hint — full BarcodeDetector API works on modern browsers
-    const input = document.getElementById('prod-search');
-    input.focus();
-    alert('📷 Camera ready — scan barcode or type/SKU.');
-  } catch {
-    alert('Scan not supported — type SKU/name manually.');
-  }
+document.getElementById('scan-btn').onclick = () => {
+  alert('📷 Camera scan: Enter or scan barcode in search box.');
+  document.getElementById('prod-search').focus();
 };
 
 function addToCart(prodId) {
-  if (!shiftOn) return alert('Start shift first!');
-  const prod = allProducts.find(p => p.id === prodId);
-  if (!prod || prod.qty <= 0) return alert(!prod ? 'Not found' : 'Out of stock!');
-  const ex = cart.find(i => i.productId === prodId);
-  ex ? ex.qty++ : cart.push({ productId:prod.id, name:prod.name, price:prod.price, qty:1 });
-  localStorage.setItem(`cart_${user.id}`, JSON.stringify(cart));
-  renderCart();
+  const prod = ALL_PRODUCTS.find(p => p.id == prodId);
+  if (!prod) return;
+  if (prod.qty <= 0) return alert('Out of stock.');
+  
+  const existing = CART.find(i => i.productId == prodId);
+  if (existing) {
+    existing.qty += 1;
+  } else {
+    CART.push({
+      productId: prod.id,
+      name: prod.name,
+      price: prod.price,
+      qty: 1
+    });
+  }
+  updateCartDisplay();
 }
-function renderCart() {
-  const c = document.getElementById('cart-items');
-  if (!cart.length) { c.innerHTML='<p>Empty.</p>'; updateTotals(); return; }
-  c.innerHTML = cart.map((it,i) => `<div class="cart-item">
-    <div><strong>${it.name}</strong><br>Qty:${it.qty} × ₱${it.price.toFixed(2)}</div>
-    <div>₱${(it.price*it.qty).toFixed(2)} <button data-idx="${i}" class="btn-delete" style="padding:2px 6px;">×</button></div>
-  </div>`).join('');
-  c.querySelectorAll('.btn-delete').forEach(b => b.onclick = () => {
-    cart.splice(+b.dataset.idx,1); localStorage.setItem(`cart_${user.id}`, JSON.stringify(cart)); renderCart();
-  });
-  updateTotals();
-}
-function updateTotals() {
-  const sub = cart.reduce((s,i)=>s+i.price*i.qty,0);
-  const discPct = +document.getElementById('discount-pct').value||0;
-  const total = sub*(1-discPct/100);
-  document.getElementById('subtotal').textContent = sub.toFixed(2);
-  document.getElementById('grand-total').textContent = total.toFixed(2);
+function updateCartDisplay() {
+  const container = document.getElementById('cart-items');
+  if (CART.length === 0) {
+    container.innerHTML = '<p style="color:#888;">No items yet.</p>';
+  } else {
+    container.innerHTML = CART.map((item, idx) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #eee;">
+        <div>
+          <strong>${item.name}</strong><br>
+          ₱${item.price.toFixed(2)} × ${item.qty} = ₱${(item.price*item.qty).toFixed(2)}
+        </div>
+        <div>
+          <button data-i="${idx}" class="qty-minus" style="padding:2px 6px;">−</button>
+          <button data-i="${idx}" class="qty-plus" style="padding:2px 6px;">+</button>
+          <button data-i="${idx}" class="item-remove" style="padding:2px 6px;color:red;">×</button>
+        </div>
+      </div>
+    `).join('');
+    
+    container.querySelectorAll('.qty-minus').forEach(b => b.onclick = () => {
+      const i = parseInt(b.dataset.i);
+      CART[i].qty--;
+      if (CART[i].qty <= 0) CART.splice(i, 1);
+      updateCartDisplay();
+    });
+    container.querySelectorAll('.qty-plus').forEach(b => b.onclick = () => {
+      CART[parseInt(b.dataset.i)].qty++;
+      updateCartDisplay();
+    });
+    container.querySelectorAll('.item-remove').forEach(b => b.onclick = () => {
+      CART.splice(parseInt(b.dataset.i), 1);
+      updateCartDisplay();
+    });
+  }
+  
+  const subtotal = CART.reduce((sum, i) => sum + i.price * i.qty, 0);
+  const discType = document.getElementById('discount-type').value;
+  let discount = 0;
+  if (discType !== 'none') discount = subtotal * DISCOUNT_RATE;
+  const grandTotal = subtotal - discount;
+  
+  document.getElementById('subtotal').textContent = `₱${subtotal.toFixed(2)}`;
+  document.getElementById('grand-total').textContent = `₱${grandTotal.toFixed(2)}`;
   updateChange();
 }
-document.getElementById('discount-pct').oninput = updateTotals;
-document.getElementById('pay-method').onchange = e => {
-  document.getElementById('cash-fields').style.display = e.target.value==='gcash'?'none':'block';
-  document.getElementById('split-fields').style.display = e.target.value==='split'?'block':'none';
+document.getElementById('discount-type').onchange = updateCartDisplay;
+document.getElementById('cash-received').oninput = updateChange;
+document.getElementById('pay-method').onchange = function() {
+  document.getElementById('cash-amount-row').style.display = this.value === 'gcash' ? 'none' : 'block';
+  document.getElementById('gcash-amount-row').classList.toggle('hidden', this.value === 'cash');
+  updateChange();
 };
-['cash-received','split-cash','split-gcash'].forEach(id => {
-  document.getElementById(id).oninput = updateChange;
-});
 function updateChange() {
-  const gt = +document.getElementById('grand-total').textContent;
-  const m = document.getElementById('pay-method').value;
-  document.getElementById('change').textContent = m==='cash' ? Math.max(0,(+document.getElementById('cash-received').value||0)-gt).toFixed(2) : '0.00';
+  const grandTotal = parseFloat(document.getElementById('grand-total').textContent.replace(/[₱,]/g, '')) || 0;
+  const received = parseFloat(document.getElementById('cash-received').value) || 0;
+  document.getElementById('change-amount').textContent = `₱${Math.max(0, received - grandTotal).toFixed(2)}`;
 }
 document.getElementById('clear-cart').onclick = () => {
-  if (confirm('Clear all?')) { cart=[]; localStorage.removeItem(`cart_${user.id}`); renderCart(); }
+  if (CART.length && !confirm('Clear cart?')) return;
+  CART = [];
+  updateCartDisplay();
 };
 
-// ========== COMPLETE SALE — SEQUENTIAL TICKET ==========
-function getNextTicketNumber() {
-  const sales = JSON.parse(localStorage.getItem('sales')||'[]');
-  const maxSeq = sales.reduce((max,s) => {
-    const m = s.id.match(/TX-(\d+)/);
-    return m ? Math.max(max, parseInt(m[1])) : max;
-  }, 0);
-  return `TX-${String(maxSeq+1).padStart(3,'0')}`; // TX-001, TX-002...
-}
+// ========== COMPLETE SALE ==========
 document.getElementById('complete-sale').onclick = () => {
-  if (!shiftOn) return alert('Start shift first!');
-  if (!cart.length) return alert('Empty cart!');
-  const grandTotal = +document.getElementById('grand-total').textContent;
-  const method = document.getElementById('pay-method').value;
-  let cashPart=0, gcashPart=0;
-  if (method==='cash') {
-    cashPart = grandTotal;
-    if ((+document.getElementById('cash-received').value||0) < grandTotal) return alert('Insufficient amount!');
-  } else if (method==='gcash') {
-    gcashPart = grandTotal;
-  } else {
-    cashPart = +document.getElementById('split-cash').value||0;
-    gcashPart = +document.getElementById('split-gcash').value||0;
-    if (cashPart+gcashPart < grandTotal) return alert('Payment less than total!');
+  if (!SHIFT_ACTIVE) return alert('Start your shift first.');
+  if (CART.length === 0) return alert('Cart is empty.');
+  
+  const subtotal = CART.reduce((sum, i) => sum + i.price * i.qty, 0);
+  const discType = document.getElementById('discount-type').value;
+  const discount = discType !== 'none' ? subtotal * DISCOUNT_RATE : 0;
+  const grandTotal = subtotal - discount;
+  const payMethod = document.getElementById('pay-method').value;
+  const cashReceived = parseFloat(document.getElementById('cash-received').value) || 0;
+  
+  if ((payMethod === 'cash' || payMethod === 'split') && cashReceived < grandTotal) {
+    return alert('Insufficient cash amount.');
   }
+  
+  // Get next ticket number
+  const sales = JSON.parse(localStorage.getItem('sales') || '[]');
+  const lastNum = sales.length === 0 ? 0 : parseInt(sales[sales.length - 1].ticketNumber);
+  const ticketNumber = String(lastNum + 1).padStart(3, '0');
+  
   // Deduct stock
-  const prods = JSON.parse(localStorage.getItem('products')||'[]');
-  cart.forEach(it => {
-    const p = prods.find(x => x.id === it.productId);
-    if (p) p.qty = Math.max(0, p.qty - it.qty);
+  const products = JSON.parse(localStorage.getItem('products') || '[]');
+  CART.forEach(item => {
+    const prod = products.find(p => p.id === item.productId);
+    if (prod) prod.qty = Math.max(0, prod.qty - item.qty);
   });
-  localStorage.setItem('products', JSON.stringify(prods));
+  localStorage.setItem('products', JSON.stringify(products));
+  
   // Record sale
   const sale = {
-    id: getNextTicketNumber(),
-    cashierId: user.id, cashierName: user.name, storeId: user.storeId,
-    items: [...cart], subtotal: cart.reduce((s,i)=>s+i.price*i.qty,0),
-    discountPct: +document.getElementById('discount-pct').value||0,
-    total: grandTotal, method, cashPart, gcashPart,
-    date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString(),
-    fullTime: new Date().toLocaleString()
+    id: `TXN-${Date.now()}`,
+    ticketNumber,
+    storeId: SELECTED_STORE.id,
+    cashierId: CURRENT_USER.id,
+    cashierName: CURRENT_USER.name || CURRENT_USER.username,
+    items: [...CART],
+    subtotal,
+    discount,
+    discountType: discType,
+    discountId: document.getElementById('discount-id').value.trim() || null,
+    total: grandTotal,
+    method: payMethod,
+    cashReceived: payMethod === 'gcash' ? 0 : cashReceived,
+    change: payMethod === 'gcash' ? 0 : Math.max(0, cashReceived - grandTotal),
+    gcashRef: document.getElementById('gcash-ref').value.trim() || null,
+    date: new Date().toLocaleDateString(),
+    fullTime: new Date().toLocaleString(),
+    timestamp: Date.now()
   };
-  const sales = JSON.parse(localStorage.getItem('sales')||'[]');
-  sales.unshift(sale);
+  
+  sales.push(sale);
   localStorage.setItem('sales', JSON.stringify(sales));
+  
+  // Update shift total
+  SHIFT_DATA.salesTotal += grandTotal;
+  localStorage.setItem(`shift_${CURRENT_USER.id}_${SELECTED_STORE.id}`, JSON.stringify(SHIFT_DATA));
+  
   // Reset
-  cart=[]; localStorage.removeItem(`cart_${user.id}`);
-  document.getElementById('discount-pct').value = '0';
+  CART = [];
+  updateCartDisplay();
+  document.getElementById('discount-id').value = '';
   document.getElementById('cash-received').value = '';
-  document.getElementById('split-cash').value = '';
-  document.getElementById('split-gcash').value = '';
-  renderCart(); renderRecentTx();
-  alert(`Sale Complete! ✅\nTicket: ${sale.id}\nTotal: ₱${grandTotal.toFixed(2)}`);
+  document.getElementById('gcash-ref').value = '';
+  loadRecentTransactions();
+  loadProducts();
+  
+  alert(`Sale Complete! Ticket #${ticketNumber}`);
 };
-function renderRecentTx() {
-  const sales = JSON.parse(localStorage.getItem('sales')||'[]').filter(s => s.cashierId===user.id).slice(0,5);
-  document.getElementById('recent-tx').innerHTML = sales.length===0 ? '<p>No transactions.</p>' :
-    sales.map(tx => `<div class="form-card" style="margin:5px 0;">
-      <strong class="ticket-link" onclick="viewSale('${tx.id}')">${tx.id}</strong> — ${tx.fullTime}<br>
-      Items: ${tx.items.length} | Total: ₱${tx.total.toFixed(2)} (${tx.method})
-    </div>`).join('');
+
+// Recent Transactions (5 only)
+function loadRecentTransactions() {
+  const sales = JSON.parse(localStorage.getItem('sales') || '[]')
+    .filter(s => s.storeId === SELECTED_STORE.id && s.cashierId === CURRENT_USER.id)
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, 5);
+  
+  const container = document.getElementById('recent-tx');
+  container.innerHTML = sales.length === 0 
+    ? '<p>No transactions yet.</p>'
+    : sales.map(s => `
+        <div class="item-card">
+          <div>
+            <strong>#${s.ticketNumber}</strong> — ${s.fullTime}<br>
+            Items: ${s.items.length} | Total: ₱${s.total.toFixed(2)}<br>
+            <small>${s.method.toUpperCase()} — ${s.items.map(i=>i.name).join(', ')}</small>
+          </div>
+        </div>
+      `).join('');
 }
 
-// ========== VOID ==========
-document.getElementById('void-type').onchange = e => {
-  document.getElementById('ticket-void').style.display = e.target.value==='product_out'?'none':'block';
-  document.getElementById('prod-out-fields').style.display = e.target.value==='product_out'?'block':'none';
+// ========== VOID REQUESTS ==========
+function loadVoidRequests() {
+  const reqs = JSON.parse(localStorage.getItem('voidRequests') || '[]')
+    .filter(r => r.storeId === SELECTED_STORE.id && r.cashierId === CURRENT_USER.id)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  
+  document.getElementById('void-req-list').innerHTML = reqs.length === 0
+    ? '<p>No pending requests.</p>'
+    : reqs.map(r => `
+        <div class="item-card">
+          <div>
+            <strong>Void Ticket #${r.ticketNumber}</strong>
+            <span class="badge ${r.status}">${r.status}</span><br>
+            Reason: ${r.reason}<br>
+            ${r.correctTicket ? `Correct: #${r.correctTicket}` : ''}<br>
+            <small>${new Date(r.createdAt).toLocaleString()}</small>
+          </div>
+        </div>
+      `).join('');
+}
+document.getElementById('new-void-req').onclick = () => {
+  document.getElementById('void-modal').classList.remove('hidden');
+};
+document.getElementById('cancel-void').onclick = () => {
+  document.getElementById('void-modal').classList.add('hidden');
 };
 document.getElementById('submit-void').onclick = () => {
-  const type = document.getElementById('void-type').value;
+  const ticket = document.getElementById('void-ticket').value.trim();
   const reason = document.getElementById('void-reason').value.trim();
-  if (!reason) return alert('Enter reason!');
-  const req = {
-    id: `REQ-${Date.now()}`, fromId: user.id, fromName: user.name, storeId: user.storeId,
-    type, reason, time: new Date().toLocaleString(), status: 'pending'
-  };
-  if (type==='ticket') {
-    req.wrongTicket = document.getElementById('wrong-ticket').value.trim() || 'N/A';
-    req.correctTicket = document.getElementById('correct-ticket').value.trim() || 'N/A';
-  } else {
-    req.productName = document.getElementById('out-prod-name').value.trim();
-    req.qty = +document.getElementById('out-qty').value||1;
-  }
-  const voids = JSON.parse(localStorage.getItem('voidRequests')||'[]');
-  voids.unshift(req);
-  localStorage.setItem('voidRequests', JSON.stringify(voids));
-  alert('Request sent to Admin! ✅');
+  const correct = document.getElementById('correct-ticket').value.trim() || null;
+  
+  if (!ticket || !reason) return alert('Fill ticket # and reason.');
+  
+  const reqs = JSON.parse(localStorage.getItem('voidRequests') || '[]');
+  reqs.push({
+    id: `VOID-${Date.now()}`,
+    storeId: SELECTED_STORE.id,
+    cashierId: CURRENT_USER.id,
+    cashierName: CURRENT_USER.name || CURRENT_USER.username,
+    ticketNumber: ticket,
+    correctTicket: correct,
+    reason,
+    status: 'waiting',
+    createdAt: new Date().toISOString()
+  });
+  localStorage.setItem('voidRequests', JSON.stringify(reqs));
+  
+  alert('Request sent to Admin.');
+  document.getElementById('void-modal').classList.add('hidden');
+  document.getElementById('void-ticket').value = '';
   document.getElementById('void-reason').value = '';
-  document.getElementById('wrong-ticket').value = '';
   document.getElementById('correct-ticket').value = '';
-  document.getElementById('out-prod-name').value = '';
+  loadVoidRequests();
 };
 
-// ========== CASHFLOW ==========
-function loadFlowHistory() {
-  const hist = JSON.parse(localStorage.getItem('cashFlow')||'[]').filter(f => f.cashierId===user.id);
-  document.getElementById('flow-history').innerHTML = hist.length===0 ? '<p>No records.</p>' :
-    hist.slice(-5).reverse().map(f => `<div style="padding:8px 0; border-bottom:1px solid #eee;">
-      <strong>${f.type==='in'?'➕ Cash In':'➖ Cash Out'}</strong> — ₱${f.amount.toFixed(2)}<br>
-      ${f.reason}<br><small>${f.time}</small>
-    </div>`).join('');
+// ========== PRODUCT OUT ==========
+function loadProductOutList() {
+  const list = JSON.parse(localStorage.getItem('productOuts') || '[]')
+    .filter(o => o.storeId === SELECTED_STORE.id && o.cashierId === CURRENT_USER.id)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 10);
+  
+  document.getElementById('prod-out-list').innerHTML = list.length === 0
+    ? '<p>No records yet.</p>'
+    : list.map(o => `
+        <div class="item-card">
+          <div>
+            <strong>${o.productName}</strong> — Qty: ${o.quantity}<br>
+            Reason: ${o.reason}<br>
+            <small>${new Date(o.createdAt).toLocaleString()}</small>
+          </div>
+        </div>
+      `).join('');
 }
-document.getElementById('submit-flow').onclick = () => {
-  const amount = +document.getElementById('flow-amount').value;
-  const reason = document.getElementById('flow-reason').value.trim();
-  if (!amount || !reason) return alert('Fill all fields!');
-  const flow = JSON.parse(localStorage.getItem('cashFlow')||'[]');
-  flow.unshift({ cashierId: user.id, type: document.getElementById('flow-type').value, amount, reason, time: new Date().toLocaleString() });
-  localStorage.setItem('cashFlow', JSON.stringify(flow));
-  alert('Recorded! ✅');
-  document.getElementById('flow-amount').value = '';
-  document.getElementById('flow-reason').value = '';
-  loadFlowHistory();
+document.getElementById('new-prod-out').onclick = () => {
+  document.getElementById('prod-out-modal').classList.remove('hidden');
+};
+document.getElementById('cancel-prod-out').onclick = () => {
+  document.getElementById('prod-out-modal').classList.add('hidden');
+};
+document.getElementById('submit-prod-out').onclick = () => {
+  const prodId = document.getElementById('out-prod-select').value;
+  const qty = parseInt(document.getElementById('out-qty').value) || 0;
+  const reason = document.getElementById('out-reason').value.trim();
+  
+  if (!prodId || qty <= 0 || !reason) return alert('Fill all fields.');
+  
+  const prod = ALL_PRODUCTS.find(p => p.id == prodId);
+  if (!prod) return alert('Product not found.');
+  
+  const products = JSON.parse(localStorage.getItem('products') || '[]');
+  const prodInStore = products.find(p => p.id == prodId);
+  if (prodInStore) prodInStore.qty = Math.max(0, prodInStore.qty - qty);
+  localStorage.setItem('products', JSON.stringify(products));
+  
+  const outs = JSON.parse(localStorage.getItem('productOuts') || '[]');
+  outs.push({
+    id: `OUT-${Date.now()}`,
+    storeId: SELECTED_STORE.id,
+    cashierId: CURRENT_USER.id,
+    cashierName: CURRENT_USER.name || CURRENT_USER.username,
+    productId: prodId,
+    productName: prod.name,
+    quantity: qty,
+    reason,
+    createdAt: new Date().toISOString()
+  });
+  localStorage.setItem('productOuts', JSON.stringify(outs));
+  
+  alert('Recorded ✅');
+  document.getElementById('prod-out-modal').classList.add('hidden');
+  document.getElementById('out-prod-select').value = '';
+  document.getElementById('out-qty').value = '1';
+  document.getElementById('out-reason').value = '';
+  loadProductOutList();
+  loadProducts();
 };
 
-// ========== STOCK COUNT — HIDE SYSTEM QTY ==========
+// ========== CASH IN / OUT ==========
+function loadCashMovementLog() {
+  const logs = JSON.parse(localStorage.getItem('cashMovements') || '[]')
+    .filter(l => l.storeId === SELECTED_STORE.id && l.cashierId === CURRENT_USER.id)
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+    .slice(0, 15);
+  
+  document.getElementById('cash-log').innerHTML = logs.length === 0
+    ? '<p>No records yet.</p>'
+    : logs.map(l => `
+        <div class="item-card">
+          <div>
+            <strong>${l.type === 'in' ? '💰 Cash In' : '📤 Cash Out'}</strong> — ₱${l.amount.toFixed(2)}<br>
+            Reason: ${l.reason}<br>
+            <small>${new Date(l.timestamp).toLocaleString()}</small>
+          </div>
+        </div>
+      `).join('');
+}
+document.getElementById('submit-cash-in').onclick = () => {
+  const amt = parseFloat(document.getElementById('cash-in-amt').value) || 0;
+  const reason = document.getElementById('cash-in-reason').value.trim();
+  if (amt <= 0 || !reason) return alert('Fill amount and reason.');
+  
+  const logs = JSON.parse(localStorage.getItem('cashMovements') || '[]');
+  logs.push({
+    id: `CI-${Date.now()}`,
+    storeId: SELECTED_STORE.id,
+    cashierId: CURRENT_USER.id,
+    type: 'in',
+    amount: amt,
+    reason,
+    timestamp: new Date().toISOString()
+  });
+  localStorage.setItem('cashMovements', JSON.stringify(logs));
+  
+  if (SHIFT_DATA) {
+    SHIFT_DATA.cashInTotal += amt;
+    localStorage.setItem(`shift_${CURRENT_USER.id}_${SELECTED_STORE.id}`, JSON.stringify(SHIFT_DATA));
+  }
+  
+  alert('Recorded ✅');
+  document.getElementById('cash-in-amt').value = '';
+  document.getElementById('cash-in-reason').value = '';
+  loadCashMovementLog();
+};
+document.getElementById('submit-cash-out').onclick = () => {
+  const amt = parseFloat(document.getElementById('cash-out-amt').value) || 0;
+  const reason = document.getElementById('cash-out-reason').value.trim();
+  if (amt <= 0 || !reason) return alert('Fill amount and reason.');
+  
+  const logs = JSON.parse(localStorage.getItem('cashMovements') || '[]');
+  logs.push({
+    id: `CO-${Date.now()}`,
+    storeId: SELECTED_STORE.id,
+    cashierId: CURRENT_USER.id,
+    type: 'out',
+    amount: amt,
+    reason,
+    timestamp: new Date().toISOString()
+  });
+  localStorage.setItem('cashMovements', JSON.stringify(logs));
+  
+  if (SHIFT_DATA) {
+    SHIFT_DATA.cashOutTotal += amt;
+    localStorage.setItem(`shift_${CURRENT_USER.id}_${SELECTED_STORE.id}`, JSON.stringify(SHIFT_DATA));
+  }
+  
+  alert('Recorded ✅');
+  document.getElementById('cash-out-amt').value = '';
+  document.getElementById('cash-out-reason').value = '';
+  loadCashMovementLog();
+};
+
+// ========== STOCK COUNT REQUESTS ==========
+let activeCountProduct = null;
 function loadCountRequests() {
-  const reqs = JSON.parse(localStorage.getItem('countRequests')||'[]').filter(r => r.storeId===user.storeId && r.status==='pending');
-  document.getElementById('count-requests').innerHTML = reqs.length===0 ? '<p>No pending requests.</p>' :
-    reqs.map(r => `<div class="form-card">
-      <p><strong>Request:</strong> Count Stocks</p>
-      <p><strong>From Admin:</strong> ${r.time}</p>
-      <button data-req="${r.id}" class="btn-primary start-count" style="width:auto;">Start Count</button>
-    </div>`).join('');
-  document.querySelectorAll('.start-count').forEach(b => b.onclick = () => showCountForm(parseInt(b.dataset.req)));
-}
-function showCountForm(reqId) {
-  const reqs = JSON.parse(localStorage.getItem('countRequests')||'[]');
-  const req = reqs.find(r => r.id === reqId);
-  if (!req) return;
-  req.status = 'in_progress';
-  localStorage.setItem('countRequests', JSON.stringify(reqs));
-  const prods = JSON.parse(localStorage.getItem('products')||'[]').filter(p => p.storeId===user.storeId && req.productIds.includes(String(p.id)));
-  const area = document.getElementById('count-form-area');
-  area.style.display = 'block';
-  area.dataset.reqId = reqId;
-  // ✅ System quantity REMOVED — only blank input shown
-  document.getElementById('count-items').innerHTML = prods.map(p => `<div class="form-row" style="border-bottom:1px solid #eee; padding:10px 0;">
-    <label><strong>${p.name}</strong></label>
-    <input type="number" class="actual-count" data-pid="${p.id}" min="0" placeholder="Enter counted qty">
-  </div>`).join('');
+  const requests = JSON.parse(localStorage.getItem('countRequests') || '[]')
+    .filter(r => r.storeId === SELECTED_STORE.id && r.targetUsers.includes(CURRENT_USER.id) && !r.completed)
+    .sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
+  
+  document.getElementById('count-requests').innerHTML = requests.length === 0
+    ? '<p>No pending count requests.</p>'
+    : requests.map(r => {
+        const prodNames = r.productIds.map(pid => {
+          const p = ALL_PRODUCTS.find(x => x.id === pid);
+          return p ? p.name : 'Unknown';
+        }).join(', ');
+        return `
+          <div class="item-card">
+            <div>
+              <strong>Count Request</strong> — ${r.scope === 'all' ? 'All Products' : prodNames}<br>
+              <small>Sent: ${new Date(r.sentAt).toLocaleString()}</small>
+            </div>
+            <button data-rid="${r.id}" class="btn-primary do-count">Start Count</button>
+          </div>
+        `;
+      }).join('');
+  
+  document.querySelectorAll('.do-count').forEach(btn => {
+    btn.onclick = () => {
+      const reqId = btn.dataset.rid;
+      const req = JSON.parse(localStorage.getItem('countRequests') || '[]').find(r => r.id === reqId);
+      if (!req) return;
+      
+      if (req.scope === 'single' && req.productIds.length === 1) {
+        activeCountProduct = req.productIds[0];
+        const p = ALL_PRODUCTS.find(x => x.id === activeCountProduct);
+        document.getElementById('count-prod-name').textContent = p ? p.name : 'Product';
+        document.getElementById('count-submit-modal').classList.remove('hidden');
+        document.getElementById('count-submit-modal').dataset.reqId = reqId;
+      } else {
+        alert('Multi-product count — will be available in detailed view.');
+      }
+    };
+  });
 }
 document.getElementById('submit-count').onclick = () => {
-  const reqId = parseInt(document.getElementById('count-form-area').dataset.reqId);
-  const counts = [];
-  document.querySelectorAll('.actual-count').forEach(inp => {
-    counts.push({ productId: parseInt(inp.dataset.pid), actual: parseFloat(inp.value)||0 });
+  const actualQty = parseInt(document.getElementById('actual-qty').value);
+  if (isNaN(actualQty) || actualQty < 0) return alert('Enter valid quantity.');
+  
+  const reqId = document.getElementById('count-submit-modal').dataset.reqId;
+  const requests = JSON.parse(localStorage.getItem('countRequests') || '[]');
+  const req = requests.find(r => r.id === reqId);
+  if (!req) return;
+  
+  const submissions = JSON.parse(localStorage.getItem('countSubmissions') || '[]');
+  submissions.push({
+    requestId: reqId,
+    storeId: SELECTED_STORE.id,
+    productId: activeCountProduct,
+    cashierId: CURRENT_USER.id,
+    cashierName: CURRENT_USER.name || CURRENT_USER.username,
+    actualCount: actualQty,
+    submittedAt: new Date().toISOString()
   });
-  const resps = JSON.parse(localStorage.getItem('countResponses')||'[]');
-  resps.unshift({ requestId: reqId, storeId: user.storeId, fromId: user.id, fromName: user.name, counts, time: new Date().toLocaleString() });
-  localStorage.setItem('countResponses', JSON.stringify(resps));
-  const reqs = JSON.parse(localStorage.getItem('countRequests')||'[]');
-  const req = reqs.find(r => r.id === reqId);
-  if (req) req.status = 'completed';
-  localStorage.setItem('countRequests', JSON.stringify(reqs));
-  alert('Count submitted! ✅');
-  document.getElementById('count-form-area').style.display = 'none';
+  localStorage.setItem('countSubmissions', JSON.stringify(submissions));
+  
+  req.completed = true;
+  localStorage.setItem('countRequests', JSON.stringify(requests));
+  
+  alert('Count submitted to Admin ✅');
+  document.getElementById('count-submit-modal').classList.add('hidden');
+  document.getElementById('actual-qty').value = '';
   loadCountRequests();
 };
-
-// ========== CHAT — FIXED KEYS ==========
-function loadChat() {
-  const target = document.getElementById('chat-target').value;
-  if (!target) {
-    document.getElementById('chat-messages').innerHTML = '<p>Select who to chat with.</p>';
-    return;
-  }
-  const convos = JSON.parse(localStorage.getItem('chats')||'{}');
-  const key = `${target}_cashier_${user.id}`;
-  const msgs = convos[key] || [];
-  document.getElementById('chat-messages').innerHTML = msgs.length===0 ? '<p>No messages yet.</p>' :
-    msgs.map(m => `<div class="chat-msg ${m.fromId===user.id||m.from==='cashier'?'sent':'received'}">
-      <strong>${m.fromName}:</strong> ${m.text}<br><small>${m.time}</small>
-    </div>`).join('');
-  document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
-}
-document.getElementById('chat-target').onchange = loadChat;
-document.getElementById('chat-send').onclick = () => {
-  const target = document.getElementById('chat-target').value;
-  const text = document.getElementById('chat-input').value.trim();
-  if (!target || !text) return;
-  const convos = JSON.parse(localStorage.getItem('chats')||'{}');
-  const myKey = `${target}_cashier_${user.id}`;
-  const theirKey = target==='admin' ? `admin_cashier_${user.id}` : `sp_cashier_${user.id}`;
-  if (!convos[myKey]) convos[myKey] = [];
-  convos[myKey].push({ fromId: user.id, fromName: user.name, text, time: new Date().toLocaleString() });
-  if (!convos[theirKey]) convos[theirKey] = [];
-  convos[theirKey].push({ from: 'cashier', fromName: user.name, text, time: new Date().toLocaleString() });
-  localStorage.setItem('chats', JSON.stringify(convos));
-  document.getElementById('chat-input').value = '';
-  loadChat();
+document.getElementById('cancel-count').onclick = () => {
+  document.getElementById('count-submit-modal').classList.add('hidden');
+  activeCountProduct = null;
 };
 
-// Initialize
-updateShiftUI();
-renderCart();
-renderRecentTx();
+// ========== PRIVATE CHAT ==========
+let CHAT_PARTNER = null;
+document.getElementById('chat-partner').onchange = e => {
+  CHAT_PARTNER = e.target.value || null;
+  document.getElementById('chat-box').style.display = CHAT_PARTNER ? 'block' : 'none';
+  document.getElementById('chat-input-area').style.display = CHAT_PARTNER ? 'flex' : 'none';
+  if (CHAT_PARTNER) loadChatMessages();
+};
+function loadChatMessages() {
+  if (!CHAT_PARTNER) return;
+  const convKey = `chat_cashier_${CURRENT_USER.id}_${CHAT_PARTNER}`;
+  const messages = JSON.parse(localStorage.getItem(convKey) || '[]');
+  
+    const box = document.getElementById('chat-box');
+  box.innerHTML = messages.length === 0
+    ? '<p style="color:#888;">No messages yet.</p>'
+    : messages.map(m => `
+        <div class="chat-msg ${m.senderId === CURRENT_USER.id ? 'sent' : 'received'}">
+          <strong>${m.senderName}:</strong> ${m.text}<br>
+          <small style="opacity:0.7;">${new Date(m.time).toLocaleTimeString()}</small>
+        </div>
+      `).join('');
+  box.scrollTop = box.scrollHeight;
+}
+document.getElementById('send-chat').onclick = () => {
+  if (!CHAT_PARTNER) return;
+  const text = document.getElementById('chat-text').value.trim();
+  if (!text) return;
+
+  const convKey = `chat_cashier_${CURRENT_USER.id}_${CHAT_PARTNER}`;
+  const messages = JSON.parse(localStorage.getItem(convKey) || '[]');
+  messages.push({
+    senderId: CURRENT_USER.id,
+    senderName: CURRENT_USER.name || CURRENT_USER.username,
+    to: CHAT_PARTNER,
+    text,
+    time: new Date().toISOString()
+  });
+  localStorage.setItem(convKey, JSON.stringify(messages));
+
+  // Mirror message on partner's perspective
+  const partnerKey = CHAT_PARTNER === 'admin'
+    ? `chat_admin_cashier_${CURRENT_USER.id}`
+    : `chat_sp_cashier_${CURRENT_USER.id}`;
+  const partnerMsgs = JSON.parse(localStorage.getItem(partnerKey) || '[]');
+  partnerMsgs.push({
+    senderId: CURRENT_USER.id,
+    senderName: CURRENT_USER.name || CURRENT_USER.username,
+    text,
+    time: new Date().toISOString()
+  });
+  localStorage.setItem(partnerKey, JSON.stringify(partnerMsgs));
+
+  document.getElementById('chat-text').value = '';
+  loadChatMessages();
+};
+
+// ========== SP MESSAGE POPUP ==========
+function checkSPMessages() {
+  const msgs = JSON.parse(localStorage.getItem('spMessages') || '[]');
+  const unread = msgs.filter(m => !m.readAt && (!m.targetStore || m.targetStore === SELECTED_STORE.id));
+  if (unread.length > 0) {
+    const latest = unread[unread.length - 1];
+    document.getElementById('sp-msg-text').textContent = latest.text;
+    document.getElementById('sp-msg-popup').classList.remove('hidden');
+    latest.readAt = new Date().toISOString();
+    localStorage.setItem('spMessages', JSON.stringify(msgs));
+  }
+}
+document.getElementById('close-sp-msg').onclick = () => {
+  document.getElementById('sp-msg-popup').classList.add('hidden');
+};
+
+// ========== INIT ==========
+loadStores();
 </script>
 </body>
 </html>
