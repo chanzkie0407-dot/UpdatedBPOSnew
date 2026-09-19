@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Service Provider — BPOS</title>
+  <link rel="stylesheet" href="../../assets/css/style.css">
+</head>
+<body>
+  <div class="login-container" style="max-width:500px; margin-top:80px;">
+    <h1>Service Provider Dashboard</h1>
+    <p style="margin:20px 0;">Full system management and subscription controls.</p>
+    <button id="logout-btn" class="btn-logout" style="width:100%;">Log Out</button>
+  </div>
+<script type="module">
+import { requireAuth } from '../../auth/protect.js';
+import { logout } from '../../auth/login.js';
+requireAuth(['service_provider']);
+document.getElementById('logout-btn').onclick = logout;
+</script>
+</body>
+</html>
