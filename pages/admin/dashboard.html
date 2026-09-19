@@ -199,20 +199,21 @@ function initTabs() {
     btn.onclick = function(e) {
       e.preventDefault();
       
-      // Alisin lahat ng active state
       tabButtons.forEach(b => b.classList.remove('active'));
       tabContents.forEach(c => c.classList.remove('active'));
       
-      // I-set active sa napiling tab
       this.classList.add('active');
       const targetId = this.getAttribute('data-tab');
       const targetContent = document.getElementById(targetId);
       if (targetContent) targetContent.classList.add('active');
       
-      // I-load ang data kung kailangan
+      // Siguradong nakalagay lahat ng kailangang i-load
+      if (targetId === 'stores') loadStores();
+      if (targetId === 'products') loadProducts();
       if (targetId === 'chat') loadChatTargets();
       if (targetId === 'count') loadCountTabData();
       if (targetId === 'voids') loadVoidRequests();
+      if (targetId === 'stocks') {} // wala pang kailangang i-load — may button na
     };
   });
 }
