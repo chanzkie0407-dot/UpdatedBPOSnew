@@ -71,7 +71,7 @@
           <p style="font-size:1.8rem;font-weight:bold;" id="stat-active-subs">0</p>
         </div>
         <div class="item-card" style="background:#fffbf0;">
-          <h4>Expiring Soon</h4>
+          <h4>Expiring Soon (≤7d)</h4>
           <p style="font-size:1.8rem;font-weight:bold;" id="stat-expiring">0</p>
         </div>
         <div class="item-card" style="background:#fafafa;">
@@ -189,7 +189,7 @@
 import { requireAuth } from '../../auth/protect.js';
 import { logout } from '../../auth/login.js';
 
-// ========== FIXED ROLE CHECK ==========
+// ========== ROLE CHECK ==========
 const user = requireAuth(['service_provider']);
 if (!user) window.location.href = '../../auth/login.html';
 const CURRENT_USER = user;
@@ -205,6 +205,18 @@ window.addEventListener('online', updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
 updateOnlineStatus();
 
+// ========== SYSTEM LOGGING ==========
+function logAction(action, details='') {
+  const logs = JSON.parse(localStorage.getItem('systemActivityLog') || '[]');
+  logs.push({
+    action,
+    details,
+    spId: CURRENT_USER.id || 'sp-main',
+    timestamp: new Date().toISOString()
+  });
+  localStorage.setItem('systemActivityLog', JSON.stringify(logs));
+}
+
 // ========== SUBSCRIPTION STATUS SUMMARY ==========
 function checkSystemSubscriptions() {
   const subs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
@@ -213,6 +225,7 @@ function checkSystemSubscriptions() {
   
   if (subs.length === 0) {
     alertBox.classList.remove('hidden');
+    alertBox.classList.remove('expired');
     textSpan.textContent = 'No subscriptions created yet. Free trial activates when first Admin account is created.';
     return;
   }
@@ -221,7 +234,7 @@ function checkSystemSubscriptions() {
   const expiring = subs.filter(s => {
     const expiry = new Date(s.expiryAt);
     const daysLeft = (expiry - new Date()) / 86400000;
-    return daysLeft > 0 && daysLeft <= 3;
+    return daysLeft > 0 && daysLeft <= 7;
   });
   const expired = subs.filter(s => {
     const expiry = new Date(s.expiryAt);
@@ -231,16 +244,15 @@ function checkSystemSubscriptions() {
   alertBox.classList.remove('hidden');
   if (expired.length > 0) {
     alertBox.classList.add('expired');
-    textSpan.textContent = `🔴 ${expired.length} subscription(s) EXPIRED | Active: ${active.length} | Expiring Soon: ${expiring.length}`;
+    textSpan.textContent = `🔴 ${expired.length} EXPIRED | Active: ${active.length} | Expiring Soon: ${expiring.length}`;
   } else if (expiring.length > 0) {
     alertBox.classList.remove('expired');
-    textSpan.textContent = `⚠️ ${expiring.length} subscription(s) expiring soon | Active: ${active.length}`;
+    textSpan.textContent = `⚠️ ${expiring.length} expiring soon | Active: ${active.length}`;
   } else {
     alertBox.classList.remove('expired');
-    textSpan.textContent = `✅ All ${active.length} subscription(s) active — no expiring soon`;
+    textSpan.textContent = `✅ All ${active.length} active — no expiring soon`;
   }
 }
-checkSystemSubscriptions();
 
 // ========== LOGOUT ==========
 function performLogout() {
@@ -258,6 +270,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
+    
     switch(btn.dataset.tab) {
       case 'overview': loadOverview(); break;
       case 'subscription': loadSubsList(); break;
@@ -325,6 +338,7 @@ function loadSubsList() {
         `;
       }).join('');
   
+  // Extend button handler
   document.querySelectorAll('.extend-btn').forEach(btn => {
     btn.onclick = () => {
       const subs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
@@ -424,7 +438,7 @@ document.getElementById('add-admin-btn').onclick = () => {
   });
   localStorage.setItem('subscriptions', JSON.stringify(subs));
   
-  logAction('Admin Account Created', `Username: ${user} — 7-Day Free Trial Activated. Expires: ${trialExpiry.toLocaleDateString()}`);
+  logAction('Admin Account Created', `Username: ${user} — 7-Day Free Trial. Expires: ${trialExpiry.toLocaleDateString()}`);
   
   alert(`✅ Admin account created!\n7-Day Free Trial Activated.\nExpires: ${trialExpiry.toLocaleDateString()}`);
   document.getElementById('new-admin-user').value = '';
@@ -443,11 +457,10 @@ document.getElementById('change-admin-pass-btn').onclick = () => {
   const idx = admins.findIndex(a => a.id === adminId);
   if (idx === -1) return alert('Admin not found.');
   
-  const oldPass = admins[idx].password;
   admins[idx].password = newPass;
   localStorage.setItem('adminAccounts', JSON.stringify(admins));
   
-  logAction('Admin Password Changed', `Username: ${admins[idx].username} — changed by Service Provider`);
+  logAction('Admin Password Changed', `Username: ${admins[idx].username} — updated by SP`);
   
   alert('Password updated ✅');
   document.getElementById('new-admin-pass-set').value = '';
@@ -458,18 +471,15 @@ document.getElementById('change-admin-pass-btn').onclick = () => {
 document.getElementById('reset-all-btn').onclick = () => {
   document.getElementById('confirm-reset-modal').classList.remove('hidden');
 };
-
 document.getElementById('cancel-reset-btn').onclick = () => {
   document.getElementById('confirm-reset-modal').classList.add('hidden');
   document.getElementById('reset-confirm-text').value = '';
 };
-
 document.getElementById('confirm-reset-btn').onclick = () => {
   if (document.getElementById('reset-confirm-text').value !== 'RESET') {
     return alert('Type RESET exactly to confirm.');
   }
-  
-  if (!confirm('FINAL CONFIRM — Delete ALL data? This cannot be undone!')) return;
+  if (!confirm('FINAL CONFIRM — Delete ALL data? Cannot be undone!')) return;
   
   localStorage.clear();
   logAction('SYSTEM FULL RESET', 'All data cleared by Service Provider');
@@ -528,6 +538,7 @@ function loadMsgLog() {
 
 // ========== DIRECT CHAT ==========
 let CHAT_PARTNER = null;
+let chatRefreshInterval = null;
 
 function populateChatAdmins() {
   const admins = JSON.parse(localStorage.getItem('adminAccounts') || '[]');
@@ -538,9 +549,19 @@ function populateChatAdmins() {
 
 document.getElementById('chat-partner').onchange = e => {
   CHAT_PARTNER = e.target.value || null;
+  
+  if (chatRefreshInterval) {
+    clearInterval(chatRefreshInterval);
+    chatRefreshInterval = null;
+  }
+  
   document.getElementById('chat-box').style.display = CHAT_PARTNER ? 'block' : 'none';
   document.getElementById('chat-input-area').style.display = CHAT_PARTNER ? 'flex' : 'none';
-  if (CHAT_PARTNER) loadChatMessages();
+  
+  if (CHAT_PARTNER) {
+    loadChatMessages();
+    chatRefreshInterval = setInterval(loadChatMessages, 3000);
+  }
 };
 
 function loadChatMessages() {
@@ -566,42 +587,32 @@ document.getElementById('send-chat').onclick = () => {
   if (!text) return;
   
   const convKey = `chat_sp_admin_${CHAT_PARTNER}`;
-  const partnerKey = `chat_admin_sp`;
+  const adminChatKey = `chat_admin_sp`;
   
-  const messages = JSON.parse(localStorage.getItem(convKey) || '[]');
-  messages.push({
+  const msg = {
     senderId: 'sp',
     senderName: 'Service Provider',
     text,
     time: new Date().toISOString()
-  });
-  localStorage.setItem(convKey, JSON.stringify(messages));
+  };
   
-  const partnerMsgs = JSON.parse(localStorage.getItem(partnerKey) || '[]');
-  partnerMsgs.push({
-    senderId: 'sp',
-    senderName: 'Service Provider',
-    text,
-    time: new Date().toISOString()
-  });
-  localStorage.setItem(partnerKey, JSON.stringify(partnerMsgs));
+  // Save to SP's view
+  let msgs = JSON.parse(localStorage.getItem(convKey) || '[]');
+  msgs.push(msg);
+  localStorage.setItem(convKey, JSON.stringify(msgs));
+  
+  // Save to Admin's view
+  let adminMsgs = JSON.parse(localStorage.getItem(adminChatKey) || '[]');
+  adminMsgs.push(msg);
+  localStorage.setItem(adminChatKey, JSON.stringify(adminMsgs));
+  
+  logAction('SP Chat Message Sent', `To Admin ID: ${CHAT_PARTNER}`);
   
   document.getElementById('chat-text').value = '';
   loadChatMessages();
 };
 
-// ========== SYSTEM LOGGING ==========
-function logAction(action, details='') {
-  const logs = JSON.parse(localStorage.getItem('systemActivityLog') || '[]');
-  logs.push({
-    action,
-    details,
-    spId: CURRENT_USER.id || 'sp-main',
-    timestamp: new Date().toISOString()
-  });
-  localStorage.setItem('systemActivityLog', JSON.stringify(logs));
-}
-
+// ========== SYSTEM LOGS ==========
 function loadSystemLogs() {
   const logs = JSON.parse(localStorage.getItem('systemActivityLog') || '[]').reverse();
   document.getElementById('full-log').innerHTML = logs.length === 0
