@@ -1,6 +1,5 @@
 import { VALID_USERS } from '../shared/auth-config.js';
 
-// Login form handler
 document.addEventListener('submit', e => {
   if (e.target?.id !== 'login-form') return;
   e.preventDefault();
@@ -47,10 +46,16 @@ export function logout() {
   localStorage.removeItem('currentUser');
   const pwFields = document.querySelectorAll('input[type="password"]');
   pwFields.forEach(f => f.value = '');
-  window.location.href = 'login.html';
+  
+  // ✅ TAMA NA — gumagana sa LAHAT ng pahina
+  const path = window.location.pathname;
+  if (path.includes('/pages/')) {
+    window.location.href = '../../auth/login.html';
+  } else {
+    window.location.href = 'login.html';
+  }
 }
 
-// ✅ AYUSIN: Hintayin munang mabuo ang pahina bago hanapin ang button
 function initLogoutButton() {
   const logoutBtn = document.getElementById('logout-btn');
   if (logoutBtn) {
@@ -59,10 +64,8 @@ function initLogoutButton() {
       logout();
     });
   }
-  // Kung wala ang button — tahimik lang, walang error ✅
 }
 
-// Tumatakbo kapag handa na ang DOM
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initLogoutButton);
 } else {
