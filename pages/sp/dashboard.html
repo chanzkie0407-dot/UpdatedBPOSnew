@@ -5,13 +5,93 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Service Provider — BPOS</title>
   <link rel="stylesheet" href="../../assets/css/style.css">
+  <style>
+    /* Online/Offline Status */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .status-online { background: #10b981; }
+    .status-offline { background: #ef4444; animation: pulse 2s infinite; }
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.4; }
+      100% { opacity: 1; }
+    }
+    /* Notification Popup */
+    .notification-popup {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #dbeafe;
+      border: 2px solid #3b82f6;
+      padding: 15px 20px;
+      border-radius: 8px;
+      z-index: 999;
+      display: none;
+      max-width: 350px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .ticket-link {
+      color: #3b82f6;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .ticket-modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+      z-index: 1000;
+      max-width: 500px;
+      width: 90%;
+      display: none;
+    }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 999;
+      display: none;
+    }
+  </style>
 </head>
 <body>
+  <!-- SP Notification Popup -->
+  <div id="sp-notification" class="notification-popup">
+    <strong>📩 Message from Service Provider:</strong>
+    <p id="sp-notif-text" style="margin:8px 0;"></p>
+    <button onclick="closeSPNotif()" class="btn-primary" style="padding:5px 10px; font-size:13px;">Got it</button>
+  </div>
+
+  <!-- Ticket View Modal -->
+  <div id="ticket-modal-overlay" class="modal-overlay" onclick="closeTicketModal()"></div>
+  <div id="ticket-modal" class="ticket-modal">
+    <h3 id="modal-ticket-title">Ticket Details</h3>
+    <div id="modal-ticket-content"></div>
+    <button onclick="closeTicketModal()" class="btn-secondary" style="margin-top:15px;">Close</button>
+  </div>
+
   <div class="sp-container">
     <div class="header">
       <div>
         <h1>Service Provider Dashboard</h1>
         <p>System Management & Subscription Control</p>
+        <div class="status-bar">
+          <span class="status-dot" id="net-status-dot"></span>
+          <span id="net-status-text">Checking connection...</span>
+        </div>
       </div>
       <button id="logout-btn" class="btn-logout">Log Out</button>
     </div>
@@ -20,6 +100,7 @@
       <button class="tab-btn active" data-tab="subscriptions">Subscriptions</button>
       <button class="tab-btn" data-tab="passwords">Password Management</button>
       <button class="tab-btn" data-tab="audit">Audit Logs</button>
+      <button class="tab-btn" data-tab="voids">Void Requests</button>
       <button class="tab-btn" data-tab="chat">Chat</button>
     </div>
 
@@ -51,7 +132,6 @@
         </div>
         <button id="assign-sub" class="btn-primary">Assign Subscription</button>
       </div>
-
       <h3>Active Subscriptions</h3>
       <div id="sub-list"></div>
     </div>
@@ -69,7 +149,6 @@
         </div>
         <button id="update-admin-pass" class="btn-primary">Update Admin Password</button>
       </div>
-
       <div class="form-card">
         <h3>Change Your Own Password</h3>
         <p style="color:#666; font-size:14px; margin-bottom:10px;">Only you can change your Service Provider password</p>
@@ -87,7 +166,6 @@
         </div>
         <button id="update-sp-pass" class="btn-primary">Update SP Password</button>
       </div>
-
       <h3>Cashier Password Change Log</h3>
       <div id="cashier-pass-log"></div>
     </div>
@@ -96,6 +174,12 @@
     <div id="audit" class="tab-content">
       <h2>System Audit Logs</h2>
       <div id="audit-list"></div>
+    </div>
+
+    <!-- VOID REQUESTS TAB -->
+    <div id="voids" class="tab-content">
+      <h2>Void Requests</h2>
+      <div id="voids-list"></div>
     </div>
 
     <!-- CHAT TAB -->
@@ -112,6 +196,7 @@
         <input type="text" id="chat-input" placeholder="Type message..." style="flex:1;">
         <button id="chat-send" class="btn-primary" style="width:auto; margin:0;">Send</button>
       </div>
+      <p style="font-size:13px; color:#666; margin-top:8px;">💬 Messages are private and synced in real-time when online.</p>
     </div>
   </div>
 
@@ -121,11 +206,86 @@ import { logout } from '../../auth/login.js';
 import { VALID_USERS } from '../../shared/auth-config.js';
 
 const user = requireAuth(['service_provider']);
-if (!user) {}
+if (!user) window.location.href = '../../index.html';
 
 document.getElementById('logout-btn').onclick = logout;
 
-// ========== TABS ==========
+// ==============================================
+// CONNECTION STATUS
+// ==============================================
+function updateConnectionStatus() {
+  const isOnline = navigator.onLine;
+  const dot = document.getElementById('net-status-dot');
+  const text = document.getElementById('net-status-text');
+  if (isOnline) {
+    dot.className = 'status-dot status-online';
+    text.textContent = 'Online — Synced';
+  } else {
+    dot.className = 'status-dot status-offline';
+    text.textContent = 'Offline — Saving locally';
+  }
+}
+window.addEventListener('online', updateConnectionStatus);
+window.addEventListener('offline', updateConnectionStatus);
+updateConnectionStatus();
+
+// ==============================================
+// NOTIFICATION CHECK (SP Messages to others show on their side)
+// ==============================================
+function checkNotifications() {
+  const lastNotif = localStorage.getItem('spLastNotif');
+  const shownTime = localStorage.getItem('spNotifShownTimeSP');
+  if (lastNotif && (!shownTime || lastNotif !== shownTime)) {
+    const notif = JSON.parse(lastNotif);
+    document.getElementById('sp-notif-text').textContent = notif.text;
+    document.getElementById('sp-notification').style.display = 'block';
+    localStorage.setItem('spNotifShownTimeSP', lastNotif);
+  }
+}
+window.closeSPNotif = function() {
+  document.getElementById('sp-notification').style.display = 'none';
+};
+setInterval(checkNotifications, 3000);
+checkNotifications();
+
+// ==============================================
+// TICKET VIEW MODAL
+// ==============================================
+window.viewTicket = function(ticketId) {
+  const sales = JSON.parse(localStorage.getItem('sales') || '[]');
+  const ticket = sales.find(s => s.id === ticketId);
+  const modal = document.getElementById('ticket-modal');
+  const overlay = document.getElementById('ticket-modal-overlay');
+  const content = document.getElementById('modal-ticket-content');
+  
+  if (!ticket) {
+    content.innerHTML = '<p style="color:#ef4444;">❌ Ticket not found or no longer exists.</p>';
+  } else {
+    content.innerHTML = `
+      <p><strong>Ticket:</strong> ${ticket.id}</p>
+      <p><strong>Date/Time:</strong> ${ticket.fullTime}</p>
+      <p><strong>Cashier:</strong> ${ticket.cashierName}</p>
+      <p><strong>Store:</strong> ${ticket.storeId}</p>
+      <p><strong>Method:</strong> ${ticket.method}</p>
+      <p><strong>Total:</strong> ₱${ticket.total.toFixed(2)}</p>
+      <h4>Items:</h4>
+      <ul>${ticket.items.map(i => `<li>${i.name} × ${i.qty} — ₱${(i.price*i.qty).toFixed(2)}</li>`).join('')}</ul>
+    `;
+  }
+  
+  document.getElementById('modal-ticket-title').textContent = `Ticket: ${ticketId}`;
+  modal.style.display = 'block';
+  overlay.style.display = 'block';
+};
+
+window.closeTicketModal = function() {
+  document.getElementById('ticket-modal').style.display = 'none';
+  document.getElementById('ticket-modal-overlay').style.display = 'none';
+};
+
+// ==============================================
+// TABS
+// ==============================================
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.onclick = () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -136,11 +296,14 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     if (btn.dataset.tab === 'subscriptions') loadSubStoreOptions();
     if (btn.dataset.tab === 'passwords') loadCashierPassLog();
     if (btn.dataset.tab === 'audit') loadAuditLogs();
+    if (btn.dataset.tab === 'voids') loadVoidRequests();
     if (btn.dataset.tab === 'chat') loadChatTargets();
   };
 });
 
-// ========== SUBSCRIPTIONS ==========
+// ==============================================
+// SUBSCRIPTIONS
+// ==============================================
 function loadSubStoreOptions() {
   const stores = JSON.parse(localStorage.getItem('stores') || '[]');
   const sel = document.getElementById('sub-store');
@@ -195,7 +358,7 @@ function loadSubscriptions() {
   });
 }
 
-document.getElementById('assign-sub').onsubmit = document.getElementById('assign-sub').onclick = e => {
+document.getElementById('assign-sub').onclick = e => {
   e.preventDefault?.();
   const storeId = document.getElementById('sub-store').value;
   const plan = document.getElementById('sub-plan').value;
@@ -228,7 +391,9 @@ document.getElementById('assign-sub').onsubmit = document.getElementById('assign
   loadSubscriptions();
 };
 
-// ========== PASSWORD MANAGEMENT ==========
+// ==============================================
+// PASSWORD MANAGEMENT
+// ==============================================
 document.getElementById('update-admin-pass').onclick = () => {
   const newPass = document.getElementById('new-admin-pass').value.trim();
   if (!/^\d{4}$/.test(newPass)) return alert('Admin password must be exactly 4 digits!');
@@ -279,7 +444,9 @@ function loadCashierPassLog() {
       </div>`).join('');
 }
 
-// ========== AUDIT LOGS ==========
+// ==============================================
+// AUDIT LOGS
+// ==============================================
 function addAudit(action, details) {
   const logs = JSON.parse(localStorage.getItem('spAuditLogs') || '[]');
   logs.unshift({
@@ -302,7 +469,50 @@ function loadAuditLogs() {
       </div>`).join('');
 }
 
-// ========== CHAT (SP ↔ Cashier / SP ↔ Admin — PRIVATE) ==========
+// ==============================================
+// VOID REQUESTS — with Ticket View Links
+// ==============================================
+function loadVoidRequests() {
+  const voids = JSON.parse(localStorage.getItem('voidRequests') || '[]');
+  document.getElementById('voids-list').innerHTML = voids.length === 0 
+    ? '<p>No void requests.</p>'
+    : voids.map((v, i) => `<div class="form-card">
+        <p><strong>From:</strong> ${v.fromName} (${v.storeId})</p>
+        <p><strong>Type:</strong> ${v.type === 'ticket' ? 'Void Transaction' : 'Product Out'}</p>
+        <p><strong>Reason:</strong> ${v.reason}</p>
+        ${v.type === 'ticket' ? `
+          <p>Wrong Ticket: 
+            <span class="ticket-link" onclick="viewTicket('${v.wrongTicket}')">${v.wrongTicket}</span>
+          </p>
+          ${v.correctTicket && v.correctTicket !== 'N/A' ? `
+            <p>Correct Ticket: 
+              <span class="ticket-link" onclick="viewTicket('${v.correctTicket}')">${v.correctTicket}</span>
+            </p>` : ''}
+        ` : `
+          <p>Product: ${v.productName || 'N/A'} × Qty: ${v.qty || 1}</p>
+        `}
+        <p><strong>Status:</strong> ${v.status}</p>
+        ${v.status === 'pending' ? `
+          <button data-i="${i}" data-s="approve" class="btn-success" style="width:auto;margin:5px 5px 5px 0;">Approve</button>
+          <button data-i="${i}" data-s="reject" class="btn-delete" style="width:auto;margin:5px 0;">Reject</button>
+        ` : ''}
+        <p><small>Submitted: ${v.time}</small></p>
+      </div>`).join('');
+
+  document.querySelectorAll('#voids-list button').forEach(b => {
+    b.onclick = () => {
+      const all = JSON.parse(localStorage.getItem('voidRequests') || '[]');
+      all[parseInt(b.dataset.i)].status = b.dataset.s === 'approve' ? 'approved' : 'rejected';
+      localStorage.setItem('voidRequests', JSON.stringify(all));
+      loadVoidRequests();
+      addAudit(`Void Request ${b.dataset.s}d`, `From: ${all[parseInt(b.dataset.i)]?.fromName}`);
+    };
+  });
+}
+
+// ==============================================
+// CHAT — FIXED: Proper Sync + Notification
+// ==============================================
 function loadChatTargets() {
   const sel = document.getElementById('chat-target');
   sel.innerHTML = '<option value="">-- Select --</option><option value="admin">Admin / Owner</option>';
@@ -358,12 +568,18 @@ document.getElementById('chat-send').onclick = () => {
   });
   
   localStorage.setItem('chats', JSON.stringify(convos));
+  
+  // Trigger notification for recipient (e.g. "Pahiram po muna ng POS...")
+  localStorage.setItem('spLastNotif', JSON.stringify({ text, from: user.name, time: Date.now() }));
+  
   document.getElementById('chat-input').value = '';
   loadChat();
+  addAudit('Message Sent', `To: ${target}`);
 };
 
 // Initialize
 loadSubStoreOptions();
+loadVoidRequests();
 </script>
 </body>
 </html>
