@@ -183,7 +183,7 @@ import { requireAuth } from '../../auth/protect.js';
 import { logout } from '../../auth/login.js';
 
 // ========== AUTH ==========
-const user = requireAuth(['sp']);
+const user = requireAuth(['service_provider']);
 if (!user) window.location.href = '../../auth/login.html';
 const CURRENT_USER = user;
 
