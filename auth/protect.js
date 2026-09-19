@@ -1,11 +1,21 @@
 import { logout } from './login.js';
 
 export function requireAuth(allowedRoles) {
-  const user = JSON.parse(localStorage.getItem('currentUser'));
-  if (!user || !allowedRoles.includes(user.role)) {
-    alert('Access denied!');
+  const userData = localStorage.getItem('currentUser');
+  
+  if (!userData) {
+    alert('⚠️ Please log in first.');
     logout();
-    return false;
+    return null;
   }
+  
+  const user = JSON.parse(userData);
+  
+  if (!allowedRoles.includes(user.role)) {
+    alert('🚫 Access Denied — You do not have permission to view this page.');
+    logout();
+    return null;
+  }
+  
   return user;
 }
