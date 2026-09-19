@@ -50,6 +50,29 @@
 
 <script type="module" src="login.js"></script>
 <script>
+  import { verifyLogin, setLoggedInUser } from './login.js';
+
+document.getElementById('login-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const role = document.getElementById('role').value;
+  const password = document.getElementById('password').value.trim();
+  
+  if (!role || !password) return alert('Fill all fields.');
+  
+  const result = await verifyLogin(role, password);
+  
+  if (result.success) {
+    setLoggedInUser(result.user);
+    const redirect = {
+      admin: '../pages/admin/dashboard.html',
+      cashier: '../pages/cashier/dashboard.html',
+      service_provider: '../pages/sp/dashboard.html'
+    }[role];
+    window.location.href = redirect;
+  } else {
+    alert(result.message || 'Login failed.');
+  }
+});
   // Online status
   const indicator = document.getElementById('online-indicator');
   function updateStatus(){
