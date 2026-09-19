@@ -10,22 +10,40 @@ document.getElementById('login-form').addEventListener('submit', e => {
   if (!user && role === 'cashier') {
     const cashiers = JSON.parse(localStorage.getItem('cashiers') || '[]');
     const match = cashiers.find(c => c.password === password);
-    if (match) user = { id: match.id, name: match.name, role: 'cashier', storeId: match.storeId };
+    if (match) {
+      user = { 
+        id: match.id, 
+        name: match.name,
+        lastName: match.lastName || '',
+        role: 'cashier', 
+        storeId: match.storeId 
+      };
+    }
   }
 
-  if (!user) return alert('Invalid password!');
+  if (!user) {
+    alert('Invalid password!');
+    return;
+  }
 
   localStorage.setItem('currentUser', JSON.stringify(user));
   redirectByRole(user.role);
 });
 
 function redirectByRole(role) {
-  if (role === 'admin') window.location.href = '../pages/admin/dashboard.html';
-  else if (role === 'cashier') window.location.href = '../pages/cashier/dashboard.html';
-  else if (role === 'service_provider') window.location.href = '../pages/sp/dashboard.html';
+  if (role === 'admin') {
+    window.location.href = '../pages/admin/dashboard.html';
+  } else if (role === 'cashier') {
+    window.location.href = '../pages/cashier/dashboard.html';
+  } else if (role === 'service_provider') {
+    window.location.href = '../pages/sp/dashboard.html';
+  }
 }
 
 export function logout() {
   localStorage.removeItem('currentUser');
+  // Clear password fields on all pages
+  const pwFields = document.querySelectorAll('input[type="password"]');
+  pwFields.forEach(f => f.value = '');
   window.location.href = 'login.html';
 }
