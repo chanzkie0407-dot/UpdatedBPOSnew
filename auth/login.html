@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — BPOS</title>
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+  <div class="login-container">
+    <h1>BPOS — Login</h1>
+    <form id="login-form">
+      <label>Select Role:</label>
+      <select id="role">
+        <option value="admin">Admin / Owner</option>
+        <option value="cashier">Cashier</option>
+        <option value="service_provider">Service Provider</option>
+      </select>
+      <label>Password:</label>
+      <input type="password" id="password" placeholder="Enter password">
+      <button type="submit" class="btn-primary">Log In</button>
+    </form>
+  </div>
+  <script type="module" src="login.js"></script>
+</body>
+</html>
