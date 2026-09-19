@@ -36,8 +36,7 @@
   </style>
 </head>
 <body>
-
-<!-- ===== FIREBASE CONNECTION — NASA TAMANG Pwesto ===== -->
+<!-- ===== FIREBASE CONNECTION ===== -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script>
@@ -53,7 +52,7 @@ const firebaseConfig = {
 const app = firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// Sync Functions
+// ===== SHARED SYNC HELPERS =====
 async function fsSet(collection, docId, data) {
   try {
     await db.collection(collection).doc(docId).set({
@@ -62,7 +61,7 @@ async function fsSet(collection, docId, data) {
     });
     return true;
   } catch (e) {
-    console.error('Firebase Write Error:', e);
+    console.warn('Firebase offline — saving locally:', e);
     localStorage.setItem(`${collection}_${docId}`, JSON.stringify(data));
     return false;
   }
@@ -81,17 +80,26 @@ async function fsGet(collection, docId) {
 function fsWatch(collection, callback) {
   return db.collection(collection).onSnapshot(
     () => callback(),
-    err => console.warn('Sync paused:', err)
+    err => console.warn('Sync paused:', err.message)
   );
 }
 
+// ===== MIGRATION — Kasama na ang lahat ng collection =====
 async function migrateLocalToFirebase() {
-  const keys = ['stores', 'cashiers', 'products', 'transactions', 'requests', 'countRequests', 'subscription', 'adminAccounts', 'subscriptions'];
+  const keys = [
+    'stores', 'cashiers', 'products', 'transactions', 'requests', 
+    'countRequests', 'subscription', 'adminAccounts', 'subscriptions',
+    'chat_cashier_admin', 'chat_admin_sp', 'systemActivityLog'
+  ];
+  let successCount = 0;
   for (const key of keys) {
     const data = localStorage.getItem(key);
-    if (data) await fsSet('data', key, { value: JSON.parse(data) });
+    if (data) {
+      await fsSet('data', key, { value: JSON.parse(data) });
+      successCount++;
+    }
   }
-  alert('✅ Lahat ng data ay nai-upload na sa Cloud!\nMakikita na sa lahat ng device.');
+  alert(`✅ ${successCount} data groups uploaded to Cloud!\nMakikita na sa lahat ng device.`);
 }
 </script>
 
@@ -104,10 +112,12 @@ async function migrateLocalToFirebase() {
       </div>
       <button id="logout-btn" class="btn-logout">Log Out</button>
     </div>
+
     <div id="sub-alert" class="subscription-alert hidden">
       <strong>⚠️ Subscription Notice:</strong>
       <span id="sub-status-text"></span>
     </div>
+
     <div class="tabs">
       <button class="tab-btn active" data-tab="stores">Stores</button>
       <button class="tab-btn" data-tab="cashiers">Cashiers</button>
@@ -115,7 +125,7 @@ async function migrateLocalToFirebase() {
       <button class="tab-btn" data-tab="stocks">Stock Overview</button>
       <button class="tab-btn" data-tab="sales">Sales Reports</button>
       <button class="tab-btn" data-tab="requests">Void/StockOut Requests</button>
-      <button class="tab-btn" data-tab="count">Stock Count Requests</button>
+      <button class="tab-btn" data-tab="count">Stock Count</button>
       <button class="tab-btn" data-tab="chat">Chat</button>
       <button class="tab-btn" data-tab="settings">Settings</button>
     </div>
@@ -257,6 +267,7 @@ async function migrateLocalToFirebase() {
       <div class="form-card">
         <h4>System Data</h4>
         <p>Full system reset button is available to Service Provider only.</p>
+        <button id="trigger-migrate-btn" class="btn-secondary" style="margin-top:8px;">Upload Local Data to Cloud</button>
       </div>
     </div>
   </div>
@@ -264,11 +275,13 @@ async function migrateLocalToFirebase() {
 <script type="module">
 import { requireAuth } from '../../auth/protect.js';
 import { logout } from '../../auth/login.js';
+
+// ===== ROLE CHECK =====
 const user = requireAuth(['admin']);
 if (!user) window.location.href = '../../auth/login.html';
 const CURRENT_USER = user;
 
-// ONLINE STATUS
+// ===== ONLINE STATUS =====
 const indicator = document.getElementById('online-indicator');
 function updateOnlineStatus() {
   const isOnline = navigator.onLine;
@@ -279,54 +292,65 @@ window.addEventListener('online', updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
 updateOnlineStatus();
 
-// SUBSCRIPTION
+// ===== SUBSCRIPTION CHECK — aligned with SP panel =====
 async function checkSubscription() {
-  const data = await fsGet('data', 'subscription');
-  const sub = data?.value || {};
+  const allSubs = await fsGet('data', 'subscriptions');
+  const subs = allSubs?.value || [];
   const alertBox = document.getElementById('sub-alert');
   const textSpan = document.getElementById('sub-status-text');
   
-  if (!sub.startDate) {
+  if (!subs.length) {
     alertBox.classList.remove('hidden');
     alertBox.classList.remove('expired');
-    textSpan.textContent = 'Free Trial Active — Start Date Not Set. Ends 7 days after first use.';
+    textSpan.textContent = 'No subscription found. Contact Service Provider to activate.';
     return;
   }
   
-  const start = new Date(sub.startDate);
-  const expiry = new Date(start.getTime() + 7 * 86400000);
+  // Find subscription linked to this admin
+  const mySub = subs.find(s => 
+    s.adminId === CURRENT_USER.id || 
+    s.adminUsername === CURRENT_USER.name
+  );
+  
+  if (!mySub) {
+    alertBox.classList.remove('hidden');
+    alertBox.classList.remove('expired');
+    textSpan.textContent = 'Subscription not linked to your account. Contact SP.';
+    return;
+  }
+  
+  const expiry = new Date(mySub.expiryAt);
   const now = new Date();
   const daysLeft = Math.ceil((expiry - now) / 86400000);
   
   alertBox.classList.remove('hidden');
-  if (now > expiry) {
+  if (now > expiry && !mySub.forceActive) {
     alertBox.classList.add('expired');
-    textSpan.textContent = `🔴 EXPIRED — Subscription ended ${expiry.toLocaleDateString()}. Please contact Service Provider to renew.`;
+    textSpan.textContent = `🔴 EXPIRED — Ended ${expiry.toLocaleDateString()}. Contact SP to renew.`;
   } else if (daysLeft <= 2) {
     alertBox.classList.remove('expired');
-    textSpan.textContent = `⚠️ Expiring SOON — Expires: ${expiry.toLocaleDateString()} (${daysLeft} day(s) remaining).`;
+    textSpan.textContent = `⚠️ Expiring SOON — ${daysLeft} day(s) left. Expires ${expiry.toLocaleDateString()}`;
   } else {
     alertBox.classList.remove('expired');
-    textSpan.textContent = `✅ Active — Subscription Expires: ${expiry.toLocaleDateString()} (${daysLeft} days remaining)`;
+    textSpan.textContent = `✅ Active — Expires ${expiry.toLocaleDateString()} (${daysLeft} days)`;
   }
 }
-checkSubscription();
 
-document.getElementById('user-info').textContent = `${CURRENT_USER.name || 'Admin'} — Admin / Owner`;
-
-// TABS
+// ===== TABS =====
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.onclick = async () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
+    
     if (btn.dataset.tab === 'stocks') await loadStockOverview();
     if (btn.dataset.tab === 'count') await loadCountChecklist();
+    if (btn.dataset.tab === 'requests') await loadRequests();
   };
 });
 
-// ========== STORES ==========
+// ===== STORES =====
 async function renderStores() {
   const data = await fsGet('data', 'stores');
   const stores = data?.value || [];
@@ -359,14 +383,15 @@ document.getElementById('add-store-btn').onclick = async () => {
   const data = await fsGet('data', 'stores');
   const stores = data?.value || [];
   if (stores.length >= 20) return alert('Maximum 20 stores allowed.');
-  const store = {
+  
+  stores.push({
     id: 'store-' + Date.now(),
     code: document.getElementById('store-code').value.trim() || '',
     name,
     location: document.getElementById('store-location').value.trim() || '',
     createdAt: new Date().toISOString()
-  };
-  stores.push(store);
+  });
+  
   await fsSet('data', 'stores', { value: stores });
   alert('Store added ✅');
   document.getElementById('store-name').value = '';
@@ -375,7 +400,7 @@ document.getElementById('add-store-btn').onclick = async () => {
   await renderStores();
 };
 
-// ========== CASHIERS ==========
+// ===== CASHIERS =====
 async function renderCashiers() {
   const cData = await fsGet('data', 'cashiers');
   const cashiers = cData?.value || [];
@@ -418,7 +443,7 @@ document.getElementById('add-cashier-btn').onclick = async () => {
   const cashiers = cData?.value || [];
   if (cashiers.length >= 20) return alert('Maximum 20 cashiers allowed.');
   
-  const cashier = {
+  cashiers.push({
     id: 'cashier-' + Date.now(),
     fname,
     lname,
@@ -426,8 +451,8 @@ document.getElementById('add-cashier-btn').onclick = async () => {
     password: pwd,
     storeId,
     createdAt: new Date().toISOString()
-  };
-  cashiers.push(cashier);
+  });
+  
   await fsSet('data', 'cashiers', { value: cashiers });
   alert('Cashier created ✅ Can now log in.');
   document.getElementById('cashier-fname').value = '';
@@ -449,15 +474,15 @@ document.getElementById('update-pwd-btn').onclick = async () => {
   cashiers[idx].prevPassword = cashiers[idx].password;
   cashiers[idx].password = newPwd;
   cashiers[idx].lastPwdChange = new Date().toISOString();
-  await fsSet('data', 'cashiers', { value: cashiers });
   
+  await fsSet('data', 'cashiers', { value: cashiers });
   alert('Password updated ✅');
   document.getElementById('new-cashier-pwd').value = '';
   await renderCashiers();
 };
 
-// ========== PRODUCTS ==========
-async function renderProducts(filterStore=null) {
+// ===== PRODUCTS =====
+async function renderProducts(filterStore = null) {
   const pData = await fsGet('data', 'products');
   let prods = pData?.value || [];
   if (filterStore) prods = prods.filter(p => p.storeId === filterStore);
@@ -495,8 +520,8 @@ document.getElementById('add-prod-btn').onclick = async () => {
     barcode,
     createdAt: new Date().toISOString()
   });
-  await fsSet('data', 'products', { value: prods });
   
+  await fsSet('data', 'products', { value: prods });
   alert('Product added ✅');
   document.getElementById('prod-name').value = '';
   document.getElementById('prod-qty').value = '';
@@ -509,7 +534,7 @@ document.getElementById('prod-filter-store').onchange = async e => {
   await renderProducts(e.target.value || null);
 };
 
-// ========== DELETE FUNCTIONS ==========
+// ===== DELETE HANDLERS =====
 document.addEventListener('click', async e => {
   if (e.target.classList.contains('delete-store-btn')) {
     if (!confirm('⚠️ Delete this store? All products & cashiers linked to it will also be removed. Cannot be undone!')) return;
@@ -563,7 +588,7 @@ document.addEventListener('click', async e => {
   }
 });
 
-// ========== STOCK OVERVIEW ==========
+// ===== STOCK OVERVIEW =====
 async function loadStockOverview() {
   const storeId = document.getElementById('stock-store-filter').value;
   const pData = await fsGet('data', 'products');
@@ -588,10 +613,9 @@ async function loadStockOverview() {
         }).join('')}
       </table>`;
 }
-
 document.getElementById('stock-store-filter').onchange = loadStockOverview;
 
-// ========== SALES REPORTS ==========
+// ===== SALES REPORTS =====
 document.getElementById('gen-report-btn').onclick = async () => {
   const storeId = document.getElementById('report-store').value;
   const from = document.getElementById('report-from').value;
@@ -604,9 +628,9 @@ document.getElementById('gen-report-btn').onclick = async () => {
   if (from) txs = txs.filter(t => new Date(t.timestamp) >= new Date(from));
   if (to) txs = txs.filter(t => new Date(t.timestamp) <= new Date(to + 'T23:59:59'));
   
-  const totalCash = txs.filter(t => t.paymentMethod === 'cash' || t.paymentMethod === 'split').reduce((s,t)=>s+(t.cashAmount||0),0);
-  const totalGcash = txs.filter(t => t.paymentMethod === 'gcash' || t.paymentMethod === 'split').reduce((s,t)=>s+(t.gcashAmount||0),0);
-  const grandTotal = txs.reduce((s,t)=>s+t.total,0);
+  const totalCash = txs.filter(t => t.paymentMethod === 'cash' || t.paymentMethod === 'split').reduce((s, t) => s + (t.cashAmount || 0), 0);
+  const totalGcash = txs.filter(t => t.paymentMethod === 'gcash' || t.paymentMethod === 'split').reduce((s, t) => s + (t.gcashAmount || 0), 0);
+  const grandTotal = txs.reduce((s, t) => s + t.total, 0);
   
   document.getElementById('sales-report').innerHTML = `
     <div class="item-card">
@@ -626,7 +650,7 @@ document.getElementById('gen-report-btn').onclick = async () => {
   `;
 };
 
-// ========== REQUESTS ==========
+// ===== REQUESTS — WITH VOID STOCK RESTORE =====
 async function loadRequests() {
   const rData = await fsGet('data', 'requests');
   const reqs = rData?.value || [];
@@ -634,9 +658,11 @@ async function loadRequests() {
   const stores = sData?.value || [];
   const cData = await fsGet('data', 'cashiers');
   const cashiers = cData?.value || [];
+  const tData = await fsGet('data', 'transactions');
+  const txs = tData?.value || [];
   
   const pending = reqs.filter(r => r.status === 'pending');
-  const all = reqs.slice(0,30);
+  const all = reqs.slice(0, 30);
   
   document.getElementById('pending-reqs').innerHTML = pending.length === 0
     ? '<p>No pending requests.</p>'
@@ -668,6 +694,7 @@ async function loadRequests() {
             <span class="badge ${r.status}">${r.status}</span><br>
             ${c ? c.name : 'Unknown'} — ${r.reason}<br>
             <small>${new Date(r.createdAt).toLocaleString()}</small>
+            ${r.remarks ? `<br><strong>Remarks:</strong> ${r.remarks}` : ''}
           </div>
         `;
       }).join('');
@@ -676,6 +703,8 @@ async function loadRequests() {
     btn.onclick = async () => {
       const id = btn.dataset.id;
       const newStatus = btn.dataset.status;
+      const remarks = prompt('Add remarks (optional):') || '';
+      
       const rData = await fsGet('data', 'requests');
       const reqs = rData?.value || [];
       const idx = reqs.findIndex(r => r.id === id);
@@ -684,12 +713,34 @@ async function loadRequests() {
         reqs[idx].status = newStatus;
         reqs[idx].reviewedAt = new Date().toISOString();
         reqs[idx].reviewedBy = CURRENT_USER.id;
+        if (remarks) reqs[idx].remarks = remarks;
         
-        if (reqs[idx].type === 'stockout' && newStatus === 'approved') {
+        // === APPROVE ACTIONS ===
+        if (newStatus === 'approved') {
           const pData = await fsGet('data', 'products');
           const prods = pData?.value || [];
-          const pIdx = prods.findIndex(p => p.id === reqs[idx].productId && p.storeId === reqs[idx].storeId);
-          if (pIdx >= 0) prods[pIdx].stock = Math.max(0, (prods[pIdx].stock || 0) - reqs[idx].qty);
+          
+          // Stock Out → deduct stock
+          if (reqs[idx].type === 'stockout') {
+            const pIdx = prods.findIndex(p => p.id === reqs[idx].productId && p.storeId === reqs[idx].storeId);
+            if (pIdx >= 0) {
+              prods[pIdx].stock = Math.max(0, (prods[pIdx].stock || 0) - reqs[idx].qty);
+            }
+          }
+          
+          // Void → RESTORE stock
+          if (reqs[idx].type === 'void') {
+            const voidTx = txs.find(t => t.id === reqs[idx].voidTxId);
+            if (voidTx) {
+              voidTx.items.forEach(item => {
+                const pIdx = prods.findIndex(p => p.id === item.id && p.storeId === voidTx.storeId);
+                if (pIdx >= 0) {
+                  prods[pIdx].stock = (prods[pIdx].stock || 0) + item.qty;
+                }
+              });
+            }
+          }
+          
           await fsSet('data', 'products', { value: prods });
         }
         
@@ -701,7 +752,7 @@ async function loadRequests() {
   });
 }
 
-// ========== STOCK COUNT ==========
+// ===== STOCK COUNT =====
 async function loadCountChecklist() {
   const storeId = document.getElementById('count-req-store').value;
   if (!storeId) {
@@ -788,8 +839,9 @@ async function loadCountResults() {
       }).join('');
 }
 
-// ========== CHAT ==========
+// ===== CHAT — FULLY SYNCED =====
 let CHAT_TARGET = null;
+let chatRefreshInterval = null;
 
 document.getElementById('chat-partner').onchange = e => {
   const val = e.target.value;
@@ -797,9 +849,16 @@ document.getElementById('chat-partner').onchange = e => {
   CHAT_TARGET = null;
   document.getElementById('chat-box').style.display = 'none';
   document.getElementById('chat-input-area').style.display = 'none';
+  
+  if (chatRefreshInterval) {
+    clearInterval(chatRefreshInterval);
+    chatRefreshInterval = null;
+  }
+  
   if (val === 'sp') {
     CHAT_TARGET = { type: 'sp', id: 'sp' };
     loadChatMessages();
+    chatRefreshInterval = setInterval(loadChatMessages, 3000);
   }
 };
 
@@ -808,10 +867,15 @@ document.getElementById('chat-cashier-select').onchange = e => {
   if (!id) return;
   CHAT_TARGET = { type: 'cashier', id };
   loadChatMessages();
+  
+  if (chatRefreshInterval) clearInterval(chatRefreshInterval);
+  chatRefreshInterval = setInterval(loadChatMessages, 3000);
 };
 
 async function loadChatMessages() {
   if (!CHAT_TARGET) return;
+  
+  // Aligned keys — same as Cashier & SP
   const convKey = CHAT_TARGET.type === 'sp' ? 'chat_admin_sp' : `chat_admin_cashier_${CHAT_TARGET.id}`;
   const mData = await fsGet('chat', convKey);
   const msgs = mData?.value || [];
@@ -858,37 +922,55 @@ document.getElementById('send-chat-btn').onclick = async () => {
   await loadChatMessages();
 };
 
-// LOGOUT
+// ===== LOGOUT =====
 document.getElementById('logout-btn').onclick = () => {
   if (confirm('Log out? All password fields will be cleared.')) {
+    if (chatRefreshInterval) clearInterval(chatRefreshInterval);
     document.querySelectorAll('input[type="password"]').forEach(el => el.value = '');
     logout();
   }
 };
 
-// ONLOAD
+// ===== ONLOAD & SYNC =====
 window.addEventListener('load', async () => {
-  // I-upload ang dati mong data — gawin lang sa pangunahing device
-  if (!sessionStorage.getItem('migrated') && 
-      confirm('I-upload ba ang lahat ng data sa Cloud? Gawin lang sa pangunahing device!')) {
-    await migrateLocalToFirebase();
-    sessionStorage.setItem('migrated', 'yes');
+  // Manual migration button
+  document.getElementById('trigger-migrate-btn').onclick = async () => {
+    if (confirm('Upload all local data to Cloud? Do this only on your main device!')) {
+      await migrateLocalToFirebase();
+      sessionStorage.setItem('migrated', 'yes');
+    }
+  };
+  
+  // Auto-migrate once
+  if (!sessionStorage.getItem('migrated')) {
+    if (confirm('I-upload ba ang lahat ng data sa Cloud? Gawin lang sa pangunahing device!')) {
+      await migrateLocalToFirebase();
+      sessionStorage.setItem('migrated', 'yes');
+    }
   }
   
-  // Simulan ang real-time sync
+  // Real-time sync across all tabs
   fsWatch('data', async () => {
     await renderStores();
     await renderCashiers();
     await renderProducts();
     await loadRequests();
     await loadCountResults();
+    await checkSubscription();
   });
   
   await renderStores();
   await renderCashiers();
   await renderProducts();
+  await renderStores();
+  await renderCashiers();
+  await renderProducts();
   await loadRequests();
   await loadCountResults();
+  await checkSubscription();
+  
+  // Display user info
+  document.getElementById('user-info').textContent = `${CURRENT_USER.name || 'Admin'} — Admin / Owner`;
 });
 </script>
 </body>
