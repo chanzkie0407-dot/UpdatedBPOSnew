@@ -598,8 +598,8 @@ function loadCountRequests() {
             <div style="margin-top:8px;">
               ${selectedProds.map(p => `
                 <div style="padding:4px 0;">
-                  <label>${p.name} — System Stock: ${p.stock || 0}</label>
-                  <input type="number" class="count-input form-input" data-cid="${c.id}" data-pid="${p.id}" placeholder="Actual count" style="width:150px;display:inline-block;margin-left:8px;">
+                 <label>${p.name}</label>
+<input type="number" class="count-input form-input" data-cid="${c.id}" data-pid="${p.id}" placeholder="Ilan ang bilang?" style="width:150px;display:inline-block;margin-left:8px;">
                 </div>
               `).join('')}
             </div>
