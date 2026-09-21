@@ -48,6 +48,11 @@
     .chat-msg.received { background: #e9ecef; color: #333; margin-right: auto; }
   </style>
 </head>
+  <!-- Role Protection Loader -->
+<script type="module">
+  import { initRoleProtection } from "./auth.js";
+  initRoleProtection();
+</script>
 <body>
 <!-- ===== FIREBASE CONNECTION ===== -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
