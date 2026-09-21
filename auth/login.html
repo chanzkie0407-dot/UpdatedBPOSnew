@@ -21,6 +21,11 @@
     .online-indicator.offline{color:#dc3545;}
   </style>
 </head>
+  <!-- Role Protection Loader -->
+<script type="module">
+  import { initRoleProtection } from "./auth.js";
+  initRoleProtection();
+</script>
 <body>
   <div id="online-indicator" class="online-indicator">● Checking...</div>
   <div class="login-container">
