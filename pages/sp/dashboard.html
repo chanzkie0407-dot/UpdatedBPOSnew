@@ -39,6 +39,11 @@
     .subscription-alert.expired{background:#f8d7da;border-color:#dc3545;}
   </style>
 </head>
+  <!-- Role Protection Loader -->
+<script type="module">
+  import { initRoleProtection } from "./auth.js";
+  initRoleProtection();
+</script>
 <body>
   <!-- Online Status -->
   <div id="online-indicator" class="online-indicator">● Checking...</div>
