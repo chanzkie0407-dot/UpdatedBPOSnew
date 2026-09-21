@@ -94,6 +94,32 @@ function fsWatch(collection, callback) {
       </div>
       <button id="logout-btn" class="btn-logout">Log Out</button>
     </div>
+    <!-- Makikita LANG ng Admin -->
+<div data-role="admin">
+  <button>Delete Store</button>
+  <button>Manage Users</button>
+</div>
+
+<!-- Makikita ng Admin + Cashier -->
+<div data-role="admin,cashier">
+  <button>POS Register</button>
+</div>
+
+<!-- Makikita ng Service Provider lang -->
+<div data-role="service_provider">
+  <button>My Services</button>
+</div>
+
+<!-- Chat spaces — hiwalay -->
+<div class="chat-space" data-chat-role="admin">
+  <!-- Admin chat dito -->
+</div>
+<div class="chat-space" data-chat-role="cashier">
+  <!-- Cashier chat dito — hindi makikita ng iba -->
+</div>
+<div class="chat-space" data-chat-role="service_provider">
+  <!-- SP chat dito -->
+</div>
     <div id="sub-alert" class="subscription-alert hidden">
       <strong>⚠️ Service Status:</strong>
       <span id="sub-status-text"></span>
