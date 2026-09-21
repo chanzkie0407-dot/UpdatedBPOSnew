@@ -1,65 +1,122 @@
-// login.js — Complete with Firebase auth
-export function logout(redirectTo = 'login.html') {
-  sessionStorage.removeItem('currentUser');
-  sessionStorage.removeItem('migrated');
-  window.location.href = redirectTo;
-}
+// ==============================================
+// BPOS — ROLE-BASED ACCESS CONTROL
+// Updated: 2026-09-21
+// Roles: admin | cashier | service_provider
+// ==============================================
 
-export function setLoggedInUser(userData) {
-  sessionStorage.setItem('currentUser', JSON.stringify(userData));
-}
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { getFirestore, doc, getDoc } from "firebase/firestore";
 
-export function getCurrentUser() {
-  return JSON.parse(sessionStorage.getItem('currentUser') || 'null');
-}
+const auth = getAuth();
+const db = getFirestore();
 
-// ===== Verify Login =====
-export async function verifyLogin(role, password) {
-  // Helper to get data from Firebase
-  async function getData(key) {
+// Role list — huwag babaguhin
+const ROLES = {
+  ADMIN: "admin",
+  CASHIER: "cashier",
+  SERVICE_PROVIDER: "service_provider"
+};
+
+// Current user storage
+let currentUserData = null;
+let currentUserRole = null;
+
+// --------------------------
+// Check & Load User Role
+// --------------------------
+export function initRoleProtection() {
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      currentUserData = null;
+      currentUserRole = null;
+      if (!window.location.pathname.includes("login.html")) {
+        window.location.href = "login.html";
+      }
+      return;
+    }
+
     try {
-      const db = firebase.firestore();
-      const snap = await db.collection('data').doc(key).get();
-      return snap.exists ? snap.data()?.value : [];
-    } catch (e) {
-      const cached = localStorage.getItem(key);
-      return cached ? JSON.parse(cached) : [];
-    }
-  }
+      const userRef = doc(db, "users", user.uid);
+      const snap = await getDoc(userRef);
 
-  if (role === 'admin') {
-    const admins = await getData('adminAccounts');
-    const admin = admins.find(a => a.password === password);
-    if (admin) {
-      return { success: true, user: {
-        id: admin.id,
-        name: admin.username,
-        role: 'admin'
-      }};
+      if (!snap.exists()) {
+        console.error("User record not found");
+        await auth.signOut();
+        window.location.href = "login.html";
+        return;
+      }
+
+      currentUserData = { uid: user.uid, ...snap.data() };
+      currentUserRole = currentUserData.role || null;
+
+      console.log("✅ Logged in as:", currentUserRole);
+      applyRoleRestrictions();
+      redirectByRole();
+
+    } catch (err) {
+      console.error("Role load error:", err);
+      await auth.signOut();
+      window.location.href = "login.html";
     }
-  } else if (role === 'cashier') {
-    const cashiers = await getData('cashiers');
-    const cashier = cashiers.find(c => c.password === password);
-    if (cashier) {
-      return { success: true, user: {
-        id: cashier.id,
-        name: `${cashier.fname} ${cashier.lname || ''}`.trim(),
-        role: 'cashier',
-        storeId: cashier.storeId
-      }};
+  });
+}
+
+// --------------------------
+// Hide elements by role
+// --------------------------
+function applyRoleRestrictions() {
+  if (!currentUserRole) return;
+
+  // Hide ALL role-specific elements first
+  document.querySelectorAll("[data-role]").forEach(el => {
+    const allowed = el.getAttribute("data-role").split(",");
+    if (!allowed.includes(currentUserRole)) {
+      el.style.display = "none";
+    } else {
+      el.style.display = "";
     }
-  } else if (role === 'service_provider') {
-    // SP default password or from adminAccounts
-    const admins = await getData('adminAccounts');
-    const sp = admins.find(a => a.isSP === true || a.username === 'sp');
-    if (sp && sp.password === password) {
-      return { success: true, user: {
-        id: sp.id || 'sp-main',
-        name: 'Service Provider',
-        role: 'service_provider'
-      }};
+  });
+
+  // Chat separation
+  document.querySelectorAll(".chat-space").forEach(el => {
+    const ownerRole = el.getAttribute("data-chat-role");
+    if (ownerRole !== currentUserRole) {
+      el.style.display = "none";
     }
+  });
+}
+
+// --------------------------
+// Auto-redirect after login
+// --------------------------
+function redirectByRole() {
+  const page = window.location.pathname.split("/").pop() || "index.html";
+
+  const routes = {
+    [ROLES.ADMIN]: "admin-dashboard.html",
+    [ROLES.CASHIER]: "cashier-dashboard.html",
+    [ROLES.SERVICE_PROVIDER]: "sp-dashboard.html"
+  };
+
+  const allowedPages = {
+    [ROLES.ADMIN]: ["admin-dashboard.html", "products.html", "settings.html", "chat.html", "index.html"],
+    [ROLES.CASHIER]: ["cashier-dashboard.html", "pos.html", "transactions.html", "chat.html", "index.html"],
+    [ROLES.SERVICE_PROVIDER]: ["sp-dashboard.html", "services.html", "chat.html", "index.html"]
+  };
+
+  // Bawal na page? Ipadala sa tamang dashboard
+  if (!allowedPages[currentUserRole].includes(page)) {
+    window.location.href = routes[currentUserRole];
   }
-  
-  return { success: false, message: 'Invalid password or role not found' };
+}
+
+// --------------------------
+// Helper: Check permission
+// --------------------------
+export function isAdmin() { return currentUserRole === ROLES.ADMIN; }
+export function isCashier() { return currentUserRole === ROLES.CASHIER; }
+export function isServiceProvider() { return currentUserRole === ROLES.SERVICE_PROVIDER; }
+export function getUserRole() { return currentUserRole; }
+export function hasPermission(requiredRoles) {
+  return requiredRoles.includes(currentUserRole);
 }
